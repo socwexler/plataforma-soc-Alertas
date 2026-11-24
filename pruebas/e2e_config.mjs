@@ -19,21 +19,38 @@ const put = (g, valores, borrar = [], t = T.LIDER) => j(t, "/config/" + g, "PUT"
 const val = async (k) => (await j(A, "/config"))[1].flatMap(g => g.campos).find(c => c.clave === k);
 let s, r;
 // ---------- permisos
-for (const x of ["N1", "N2", "N3", "CISO"]) for (const [u, m, d] of [["/config", "GET"], ["/config/general", "PUT", { valores: { sla_minutos: 5 } }], ["/config/glpi/restablecer", "POST"], ["/config/conexiones", "GET"], ["/config/conexiones", "POST", {}], ["/config/claves", "GET"], ["/config/claves", "POST", {}], ["/config/avisos", "GET"], ["/config/sistema", "GET"], ["/config/avisos/probar", "POST", { para: "x" }], ["/config/fortisiem/probar", "POST"], ["/glpi/probar", "POST"]]) ver(`${x} no ${m} ${u}`, (await j(T[x], u, m, d))[0] === 403);
+for (const x of ["N1", "N2", "N3", "CISO"]) for (const [u, m, d] of [["/config", "GET"], ["/config/general", "PUT", { valores: { sla_media: 5 } }], ["/config/glpi/restablecer", "POST"], ["/config/conexiones", "GET"], ["/config/conexiones", "POST", {}], ["/config/claves", "GET"], ["/config/claves", "POST", {}], ["/config/avisos", "GET"], ["/config/sistema", "GET"], ["/config/avisos/probar", "POST", { para: "x" }], ["/config/fortisiem/probar", "POST"], ["/glpi/probar", "POST"]]) ver(`${x} no ${m} ${u}`, (await j(T[x], u, m, d))[0] === 403);
 ver("sin sesión", (await fetch(B + "/config")).status === 401);
 [s, r] = await j(T.LIDER, "/config/sistema"); ver("estado del sistema", s === 200 && r.esquema >= "0011" && r.convertidor === true && r.casos > 0, r);
 // ---------- general
-const sla0 = (await val("sla_minutos")).valor;
-[s, r] = await put("general", { sla_minutos: 45, jwt_horas: 8 }); ver("guarda", s === 200 && (await val("sla_minutos")).valor === 45 && (await val("sla_minutos")).origen === "pantalla", r);
-ver("se usa de inmediato", (await j(A, "/casos/resumen"))[1].sla_minutos === 45);
-for (const v of [0, 1441, "abc", null, 1.5, true, -3]) ver("sla inválido " + v, (await put("general", { sla_minutos: v }))[0] === 422);
+const sla0 = (await val("sla_media")).valor;
+[s, r] = await put("general", { sla_media: 45, jwt_horas: 8 }); ver("guarda", s === 200 && (await val("sla_media")).valor === 45 && (await val("sla_media")).origen === "pantalla", r);
+ver("se usa de inmediato", (await j(A, "/casos/resumen"))[1].sla.Media === 45);
+for (const v of [0, 1441, "abc", null, 1.5, true, -3]) ver("sla inválido " + v, (await put("general", { sla_media: v }))[0] === 422);
 for (const [g, v] of [["nada", {}], ["general", { jwt_secret: "x" }], ["general", { smtp_clave: "x" }], ["general", { mapa_activo: "sí" }]]) ver("rechaza " + JSON.stringify([g, v]), (await put(g, v))[0] === 422);
-ver("no se borra lo que no es secreto", (await put("general", {}, ["sla_minutos"]))[0] === 422);
+ver("no se borra lo que no es secreto", (await put("general", {}, ["sla_media"]))[0] === 422);
 for (const u of ["javascript:alert(1)", "http://a:b@x.com", "ftp://x", "http://", "http://x:99999"]) ver("url inválida " + u, (await put("general", { url_plataforma: u }))[0] === 422, u);
 await put("general", { url_plataforma: "http://soc.interno:8080/" });
 dk("restart", "soc-prueba-api-1"); for (let i = 0; i < 30; i++) { try { if ((await fetch(B + "/salud")).status === 200) break; } catch { /* iniciando */ } await S(1000); }
-ver("persiste al reiniciar", (await val("sla_minutos")).valor === 45 && (await val("url_plataforma")).valor === "http://soc.interno:8080");
-[s] = await j(T.LIDER, "/config/general/restablecer", "POST"); ver("restablece", s === 200 && (await val("sla_minutos")).valor === sla0 && (await val("sla_minutos")).origen !== "pantalla");
+ver("persiste al reiniciar", (await val("sla_media")).valor === 45 && (await val("url_plataforma")).valor === "http://soc.interno:8080");
+[s] = await j(T.LIDER, "/config/general/restablecer", "POST"); ver("restablece", s === 200 && (await val("sla_media")).valor === sla0 && (await val("sla_media")).origen !== "pantalla");
+// ---------- SLA por criticidad
+const OBJ = { "Crítica": 35, Alta: 45, Media: 120, Baja: 240 }; ver("SLA predeterminado", JSON.stringify((await j(A, "/casos/resumen"))[1].sla) === JSON.stringify(OBJ), (await j(A, "/casos/resumen"))[1].sla);
+for (const [t, v] of [["crítica sobre alta", { sla_critica: 46 }], ["alta sobre media", { sla_alta: 121 }], ["media sobre baja", { sla_media: 241 }], ["baja bajo media", { sla_baja: 100 }]]) { [s, r] = await put("general", v); ver("orden del SLA: " + t, s === 422 && /no puede ser mayor/.test(r.detail), r); }
+ver("sin cambios tras el rechazo", JSON.stringify((await j(A, "/casos/resumen"))[1].sla) === JSON.stringify(OBJ));
+const cs = (await j(A, "/clientes", "POST", { codigo: "SLA", nombre: "Cliente SLA" }))[1], rep0 = Math.floor(Date.now() / 1000) * 1000 - 60e3;
+for (const [crit, m] of Object.entries(OBJ)) for (const seg of [0, 1]) {
+  [s, r] = await j(T.N2, "/casos", "POST", { servicio: "SOC", cliente_id: cs.id, alerta: "SLA", criticidad: crit, resumen_ejecutivo: "x", analisis: "x", acciones_recomendadas: "x", fecha_evento: new Date(rep0 - m * 60e3 - seg * 1000).toISOString(), fecha_reporte: new Date(rep0).toISOString() });
+  ver(`${crit} a ${m} min y ${seg} s`, s === 201 && r.dentro_sla === !seg && r.sla_minutos === m, [s, r?.dentro_sla, r?.sla_minutos, r?.detail]);
+}
+const tab = async () => (await j(A, "/tablero?cliente_id=" + cs.id))[1]; let tb = await tab();
+ver("tablero por criticidad", tb.por_sla.length === 4 && tb.por_sla.every(x => x.con_tiempo === 2 && x.dentro === 1 && x.objetivo === OBJ[x.criticidad]), tb.por_sla);
+ver("total y analista cuadran", tb.indicadores.con_tiempo === 8 && tb.indicadores.dentro_sla === 4 && tb.por_analista[0].dentro_sla === 4, [tb.indicadores, tb.por_analista]);
+[s] = await put("general", { sla_alta: 46, sla_media: 121 }); tb = await tab(); ver("el cambio se aplica a lo ya registrado", s === 200 && tb.indicadores.dentro_sla === 6, tb.por_sla);
+const tg = (await j(A, "/tablero"))[1]; ver("todo el tablero cuadra", tg.por_sla.reduce((a, x) => a + x.dentro, 0) === tg.indicadores.dentro_sla && tg.por_sla.reduce((a, x) => a + x.con_tiempo, 0) === tg.indicadores.con_tiempo, tg.por_sla);
+const rs = (await j(A, "/casos/resumen"))[1], t30 = (await j(A, "/tablero?desde=" + new Date(Date.now() - 5 * 3600e3 - 30 * 864e5).toISOString().slice(0, 10)))[1].indicadores; ver("inicio y tablero coinciden", rs.fuera_sla_30 === t30.con_tiempo - t30.dentro_sla && rs.con_tiempo_30 === t30.con_tiempo, [rs, t30]);
+r = JSON.stringify((await j(A, "/usuarios/cambios"))[1]); ver("SLA en el registro de cambios", r.includes("SLA de notificación · Alta (minutos): 45 → 46"), r.slice(0, 300)); await j(A, "/config/general/restablecer", "POST");
+sql("update casos set criticidad=null where cliente_id=" + cs.id + " and criticidad='Baja'"); tb = await tab(); ver("sin criticidad usa el de Media", tb.indicadores.dentro_sla === 3, tb.indicadores); sql("update casos set criticidad='Baja' where cliente_id=" + cs.id + " and criticidad is null");
 await put("general", { url_plataforma: "http://soc.interno:8080" });
 // ---------- correo al cliente
 ver("copia ajena", (await put("correo_cliente", { correo_cc: "x@gmail.com" }))[0] === 422); ver("copia mal escrita", (await put("correo_cliente", { correo_cco: "nada" }))[0] === 422);

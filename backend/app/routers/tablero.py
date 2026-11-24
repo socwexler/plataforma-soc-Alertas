@@ -10,12 +10,11 @@ from ..config import settings
 from ..db import get_db
 from ..models import VIGENTE, Caso, Cliente, Usuario
 from ..security import requiere
+from ..sla import CON_TIEMPO, MINUTOS, dentro
 
 router = APIRouter(prefix="/api/tablero", tags=["tablero"])
 TZ = ZoneInfo(settings.zona_horaria)
 
-MINUTOS = func.extract("epoch", Caso.fecha_reporte - Caso.fecha_evento) / 60
-CON_TIEMPO = Caso.fecha_reporte.is_not(None) & Caso.fecha_evento.is_not(None)
 MEDIANA = func.percentile_cont(0.5).within_group(MINUTOS).filter(CON_TIEMPO)
 LOCAL = func.timezone(settings.zona_horaria, Caso.fecha_evento)
 CRITICIDADES = ["Crítica", "Alta", "Media", "Baja"]
@@ -61,7 +60,7 @@ def tablero(
         return r
 
     F = filtros(desde, hasta)
-    sla = settings.sla_minutos
+    sla = dentro()
 
     # ---------- indicadores
     k = db.execute(select(
@@ -69,7 +68,7 @@ def tablero(
         _contar(Caso.estado != "SIN_RETRO"),
         MEDIANA,
         _contar(CON_TIEMPO),
-        _contar(CON_TIEMPO & (MINUTOS <= sla)),
+        _contar(sla),
         _contar(Caso.criticidad.in_(["Crítica", "Alta"])),
         _contar(Caso.glpi_ticket_id.is_not(None)),
         _contar(Caso.glpi_ticket_id.is_not(None) & (func.coalesce(Caso.glpi_estado, 0) < 5)),
@@ -78,8 +77,14 @@ def tablero(
     indicadores = {
         "total": k[0], "con_retro": k[1], "mediana_minutos": _redondear(k[2]), "con_tiempo": k[3],
         "dentro_sla": k[4], "alta_critica": k[5], "con_ticket": k[6], "tickets_abiertos": k[7],
-        "total_periodo_anterior": anterior, "sla_minutos": sla,
+        "total_periodo_anterior": anterior,
     }
+
+    # ---------- cumplimiento del SLA por criticidad
+    pc = {r[0]: r for r in db.execute(select(Caso.criticidad, func.count(), _contar(CON_TIEMPO), _contar(sla), MEDIANA).where(*F).group_by(Caso.criticidad))}
+    por_sla = [{"criticidad": c, "objetivo": m, "total": pc[c][1] if c in pc else 0, "con_tiempo": pc[c][2] if c in pc else 0,
+                "dentro": pc[c][3] if c in pc else 0, "mediana_minutos": _redondear(pc[c][4]) if c in pc else None}
+               for c, m in settings.sla_objetivos.items()]
 
     # ---------- por día y criticidad (hora de Colombia)
     dia = Caso.fecha_bitacora
@@ -93,7 +98,7 @@ def tablero(
     pa = db.execute(
         select(Usuario.id, Usuario.nombre, func.count(), _contar(Caso.criticidad.in_(["Crítica", "Alta"])),
                _contar(Caso.estado != "SIN_RETRO"), MEDIANA, _contar(CON_TIEMPO),
-               _contar(CON_TIEMPO & (MINUTOS <= sla)), _contar(Caso.glpi_ticket_id.is_not(None)),
+               _contar(sla), _contar(Caso.glpi_ticket_id.is_not(None)),
                func.max(Caso.fecha_evento))
         .join(Caso.analista).where(*F).group_by(Usuario.id, Usuario.nombre).order_by(func.count().desc())
     ).all()
@@ -132,7 +137,7 @@ def tablero(
 
     return {
         "desde": desde, "hasta": hasta, "dias": dias,
-        "indicadores": indicadores, "por_dia": por_dia, "por_analista": por_analista, "sin_analista": sin_analista,
+        "indicadores": indicadores, "por_sla": por_sla, "por_dia": por_dia, "por_analista": por_analista, "sin_analista": sin_analista,
         "por_estado": por_estado, "por_hora": por_hora, "tiempos": tiempos, "top_alertas": top_alertas,
         "por_cliente": por_cliente, "glpi_estados": glpi_estados,
     }

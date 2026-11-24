@@ -3,12 +3,12 @@ import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { Campo, Confirmar, Modal, MsgError } from "../components/Ui";
-import { copiarTexto, fecha, fechaHora, num, olvidarGlpi } from "../util";
+import { copiarTexto, duracion, fecha, fechaHora, num, olvidarGlpi } from "../util";
 
 const PESTANAS = [["sistema", "Estado"], ["general", "General"], ["correo_cliente", "Correo al cliente"], ["avisos", "Avisos internos"],
   ["glpi", "GLPI"], ["fortisiem", "FortiSIEM"], ["conexiones", "Otras APIs"], ["claves", "Claves de acceso"]];
 const INTRO = {
-  general: "Parámetros de toda la plataforma.",
+  general: "Parámetros de toda la plataforma. El SLA es el tiempo entre la alerta del SIEM y el reporte al cliente: cambia el cumplimiento en inicio, tablero, casos e informes en borrador; los finales no cambian.",
   correo_cliente: "Datos fijos del borrador de alerta. Los destinatarios de cada cliente se administran en Clientes → Correos. La plataforma no envía correos a clientes.",
   avisos: "Correos automáticos solo para el equipo de Wexler: casos por revisar, devueltos y fallas de GLPI. Llevan número, cliente, alerta y criticidad, sin el detalle del caso.",
   glpi: "Integración de tickets con GLPI 10.",
@@ -17,7 +17,7 @@ const INTRO = {
 
 function Entrada({ c, valor, onCambio, borrar, onBorrar }) {
   const set = (e) => onCambio(e.target.value);
-  const ayuda = [c.ayuda, c.ilegible && "no se pudo leer: escríbala de nuevo"].filter(Boolean).join(" · ") || undefined;
+  const ayuda = [c.ayuda, c.clave.startsWith("sla_") && Number(valor) >= 60 && duracion(Number(valor)), c.ilegible && "no se pudo leer: escríbala de nuevo"].filter(Boolean).join(" · ") || undefined;
   if (c.tipo === "si_no") return <label className="check"><input type="checkbox" checked={!!valor} onChange={(e) => onCambio(e.target.checked)} /> {c.etiqueta}{c.ayuda && <span className="ayuda"> · {c.ayuda}</span>}</label>;
   if (c.tipo === "opcion") return <Campo etiqueta={c.etiqueta} ayuda={ayuda}><select value={valor ?? ""} onChange={set}>{c.opciones.map((o) => <option key={o} value={o}>{c.nombres?.[o] || o}</option>)}</select></Campo>;
   if (c.tipo === "correos" && !c.uno) return <Campo etiqueta={c.etiqueta} ayuda={ayuda}><textarea rows={2} value={valor ?? ""} onChange={set} /></Campo>;

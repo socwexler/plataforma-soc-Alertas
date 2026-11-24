@@ -3,6 +3,8 @@
 Los textos quedan como borrador editable: el analista los ajusta antes de generar el PDF/PPTX.
 """
 
+from ..sla import texto as texto_sla
+
 CLAVES = {
     "objetivo": "Objetivo",
     "alcance": "Alcance",
@@ -77,7 +79,7 @@ def _crit_desc(crit: dict) -> str:
     return ": " + lista([f"{n(v)} de criticidad {c.lower()}" for c, v in activos])
 
 
-def _servicio(s: str, d: dict, sla: int) -> dict:
+def _servicio(s: str, d: dict, sla: dict[str, int]) -> dict:
     P = d["periodos"]
     a, b, c = (p["total"] for p in P)
     act = P[-1]
@@ -148,7 +150,7 @@ def _servicio(s: str, d: dict, sla: int) -> dict:
     if act["con_tiempo"]:
         t[f"tiempos_{s}"] = (f"El tiempo mediano entre la detección de la alerta en el SIEM y su notificación al cliente "
                              f"fue de {n(act['mediana_minutos'])} minutos. El {pct(act['dentro_sla'], act['con_tiempo'])} "
-                             f"de los eventos se notificó dentro del objetivo de {sla} minutos.")
+                             f"de los eventos se notificó dentro del objetivo según su criticidad ({texto_sla(sla)}).")
     return t
 
 
@@ -164,7 +166,7 @@ def generar(cliente, informe, m: dict) -> dict[str, str]:
                    f"afectar la información o la infraestructura tecnológica de la entidad.",
     }
     for s, d in m["servicios"].items():
-        t.update(_servicio(s, d, m["sla_minutos"]))
+        t.update(_servicio(s, d, m["sla"]))
 
     f = an.get("fuentes")
     total_f = informe.fuentes_integradas or (f or {}).get("total")

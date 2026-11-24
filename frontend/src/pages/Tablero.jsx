@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { BarraCelda, BarrasH, COLOR_CRIT, Columnas, Leyenda, SERIE } from "../components/Graficos";
-import { Campo, MsgError } from "../components/Ui";
+import { Campo, Crit, MsgError } from "../components/Ui";
 import { duracion, ESTADOS, ESTADOS_GLPI, fechaHora, infoGlpi, num } from "../util";
 
 const SERIES_CRIT = ["Baja", "Media", "Alta", "Crítica"].map((c) => ({ clave: c, nombre: c, color: COLOR_CRIT[c] }));
@@ -98,7 +98,7 @@ export default function Tablero() {
             <Kpi etiqueta="Criticidad alta o crítica" valor={num(k.alta_critica)} sub={`${pct(k.alta_critica, k.total)} del total`} />
             <Kpi etiqueta="Con retroalimentación" valor={pct(k.con_retro, k.total)} sub={`${num(k.con_retro)} de ${num(k.total)} casos`} />
             <Kpi etiqueta="Tiempo mediano de reporte" valor={duracion(k.mediana_minutos)} sub="alerta SIEM → reporte al cliente" />
-            <Kpi etiqueta={`Dentro del SLA (${k.sla_minutos} min)`} valor={pct(k.dentro_sla, k.con_tiempo)} sub={`${num(k.con_tiempo - k.dentro_sla)} casos fuera`} />
+            <Kpi etiqueta="Dentro del SLA" valor={pct(k.dentro_sla, k.con_tiempo)} sub={`${num(k.con_tiempo - k.dentro_sla)} casos fuera`} />
             {glpi.activo && <Kpi etiqueta="Tickets GLPI abiertos" valor={num(k.tickets_abiertos)} sub={`${num(k.con_ticket)} casos con ticket`} />}
           </div>
 
@@ -127,6 +127,25 @@ export default function Tablero() {
                 </table>
               </div>
             )}
+          </div>
+
+          <div className="panel">
+            <h2>Cumplimiento del SLA por criticidad</h2>
+            <div className="tabla-scroll">
+              <table className="tabla">
+                <thead><tr><th>Criticidad</th><th className="num">Objetivo</th><th className="num">Casos</th><th className="num">Dentro</th><th className="num">Fuera</th>
+                  <th className="num">Cumplimiento</th><th style={{ width: "25%" }}></th><th className="num">Tiempo mediano</th></tr></thead>
+                <tbody>{d.por_sla.map((x) => (
+                  <tr key={x.criticidad} className="click" onClick={() => irCasos({ criticidad: x.criticidad })}>
+                    <td><Crit v={x.criticidad} /></td><td className="num">≤ {duracion(x.objetivo)}</td><td className="num"><b>{num(x.con_tiempo)}</b></td>
+                    <td className="num">{num(x.dentro)}</td><td className="num">{num(x.con_tiempo - x.dentro)}</td>
+                    <td className="num">{x.con_tiempo ? pct(x.dentro, x.con_tiempo) : "—"}</td>
+                    <td style={{ verticalAlign: "middle" }}><BarraCelda valor={x.dentro} max={x.con_tiempo || 1} /></td>
+                    <td className="num">{duracion(x.mediana_minutos)}</td></tr>
+                ))}</tbody>
+              </table>
+            </div>
+            <p className="tenue" style={{ marginBottom: 0 }}>Tiempo entre la alerta del SIEM y el reporte al cliente. Cuenta solo los casos con las dos fechas.</p>
           </div>
 
           <div className="panel">

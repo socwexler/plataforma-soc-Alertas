@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { Crit, Estado, MsgError } from "../components/Ui";
-import { duracion, ESTADOS, fechaHora, num } from "../util";
+import { duracion, ESTADOS, fechaHora, num, textoSla } from "../util";
 
 export default function Inicio() {
   const { usuario, puede } = useAuth();
@@ -36,8 +36,8 @@ export default function Inicio() {
           <div className="kpi"><div className="etiqueta">Casos últimos 30 días</div><div className="valor">{num(r.ultimos_30)}</div></div>
           <div className="kpi"><div className="etiqueta">Tiempo mediano de reporte</div><div className="valor">{duracion(r.mediana_minutos_30)}</div>
             <div className="sub">alerta SIEM → reporte al cliente</div></div>
-          <div className="kpi"><div className="etiqueta">Fuera de SLA ({r.sla_minutos} min)</div><div className="valor">{num(r.fuera_sla_30)}</div>
-            <div className="sub">{r.ultimos_30 ? Math.round((r.fuera_sla_30 / r.ultimos_30) * 100) : 0}% de los casos</div></div>
+          <div className="kpi"><div className="etiqueta">Fuera de SLA</div><div className="valor">{num(r.fuera_sla_30)}</div>
+            <div className="sub">{r.con_tiempo_30 ? Math.round((r.fuera_sla_30 / r.con_tiempo_30) * 100) : 0}% de los casos · {textoSla(r.sla)}</div></div>
         </div>
       )}
       {r && (

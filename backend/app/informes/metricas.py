@@ -9,13 +9,12 @@ from sqlalchemy.orm import Session
 
 from ..config import settings
 from ..models import VIGENTE, Caso, Cliente, Tactica
+from ..sla import CON_TIEMPO, MINUTOS, dentro as dentro_sla
 from .paises import pais_es
 from .periodos import etiqueta, etiqueta_corta, ultimos
 
 TZ = ZoneInfo(settings.zona_horaria)
 CRITICIDADES = ["Crítica", "Alta", "Media", "Baja"]
-MINUTOS = func.extract("epoch", Caso.fecha_reporte - Caso.fecha_evento) / 60
-CON_TIEMPO = Caso.fecha_reporte.is_not(None) & Caso.fecha_evento.is_not(None)
 
 
 def _rango(ini: date, fin: date):
@@ -27,7 +26,7 @@ def _periodo(db: Session, base: list, ini: date, fin: date) -> dict:
     total, con_retro, mediana, con_tiempo, dentro = db.execute(select(
         func.count(), func.count().filter(Caso.estado != "SIN_RETRO"),
         func.percentile_cont(0.5).within_group(MINUTOS).filter(CON_TIEMPO),
-        func.count().filter(CON_TIEMPO), func.count().filter(CON_TIEMPO & (MINUTOS <= settings.sla_minutos)),
+        func.count().filter(CON_TIEMPO), func.count().filter(dentro_sla()),
     ).where(*F)).one()
     crit = dict(db.execute(select(Caso.criticidad, func.count()).where(*F).group_by(Caso.criticidad)).all())
     tac = {(nombre or "Sin táctica"): cuenta for nombre, cuenta in db.execute(
@@ -44,7 +43,7 @@ def _periodo(db: Session, base: list, ini: date, fin: date) -> dict:
 
 
 _IP = re.compile(r"(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])")
-TRAMOS = [(15, "Hasta 15 min"), (30, "15 a 30 min"), (60, "30 a 60 min"), (None, "Más de 60 min")]
+TRAMOS = [(15, "Hasta 15 min"), (30, "15 a 30 min"), (60, "30 a 60 min"), (120, "1 a 2 h"), (240, "2 a 4 h"), (None, "Más de 4 h")]
 MAX_ANEXO = 400
 
 
@@ -121,7 +120,7 @@ def calcular(db: Session, cliente: Cliente, inicio: date) -> dict:
     return {
         "periodos": [{"inicio": i.isoformat(), "fin": f.isoformat(), "etiqueta": etiqueta(i, f),
                       "corta": etiqueta_corta(i, f)} for i, f in periodos],
-        "sla_minutos": settings.sla_minutos,
+        "sla": settings.sla_objetivos,
         "mostrar_tiempos": settings.mostrar_tiempos,   # queda fijado al marcar el informe como final
         "servicios": servicios,
         "calculado_en": datetime.now(TZ).isoformat(timespec="minutes"),

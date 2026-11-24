@@ -207,6 +207,8 @@ class CasoListaOut(ORM):
     fecha_evento: datetime | None
     fecha_reporte: datetime | None
     minutos_respuesta: int | None
+    sla_minutos: int
+    dentro_sla: bool | None
     estado: Estado
     glpi_ticket_id: int | None
     glpi_estado: int | None = None

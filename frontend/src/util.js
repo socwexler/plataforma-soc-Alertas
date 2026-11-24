@@ -24,6 +24,9 @@ export function duracion(min) {
   return m ? `${h} h ${m} min` : `${h} h`;
 }
 
+/** Objetivos por criticidad en una línea: «Crítica 35 min · Alta 45 min · Media 2 h · Baja 4 h». */
+export const textoSla = (o) => Object.entries(o || {}).map(([c, m]) => `${c} ${duracion(m)}`).join(" · ");
+
 /** Date -> valor de <input type="datetime-local"> en hora local. */
 export function aInputLocal(d) {
   if (!d) return "";

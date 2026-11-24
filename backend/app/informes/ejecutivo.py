@@ -1,7 +1,6 @@
 """Contenido de la presentación ejecutiva: lo que se calcula además de contenido.armar()."""
 from datetime import date
 
-from ..config import settings
 from .textos import pct
 
 DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
@@ -86,6 +85,6 @@ def armar(informe, ctx: dict) -> dict:
             "retro_f": sv["actual"]["con_retro"] / sv["actual"]["total"] if sv["actual"]["total"] else 0,
         }
     act = _actividades(informe.actividades or [])
-    return {"ex": servicios, "act": act, "act_paginas": _paginas_actividades(act), "dias_semana": DIAS, "sla_minutos": settings.sla_minutos,
+    return {"ex": servicios, "act": act, "act_paginas": _paginas_actividades(act), "dias_semana": DIAS,
             "estados": {"SIN_RETRO": "Sin retroalimentación", "CON_RETRO": "Con retroalimentación", "CERRADO": "Cerrado"},
             "ips_permitidos": ((informe.anexos or {}).get("ips") or {}).get("permitidos", [])[:8]}

@@ -31,11 +31,12 @@ def C(clave, etiqueta, tipo="texto", **kw):
     return {"clave": clave, "etiqueta": etiqueta, "tipo": tipo, **kw}
 
 
+SLA = [("critica", "Crítica"), ("alta", "Alta"), ("media", "Media"), ("baja", "Baja")]   # de la más a la menos exigente
+
 # tipo: texto | entero | si_no | secreto | opcion | url | host | correos
 GRUPOS: dict[str, dict] = {
     "general": {"titulo": "General", "campos": [
-        C("sla_minutos", "SLA de reporte (minutos)", "entero", min=1, max=1440,
-          ayuda="Cambia el cumplimiento en inicio, tablero e informes en borrador; los finales no cambian"),
+        *[C(f"sla_{k}", f"SLA de notificación · {et} (minutos)", "entero", min=1, max=1440) for k, et in SLA],
         C("jwt_horas", "Duración de la sesión (horas)", "entero", min=1, max=24, ayuda="Aplica a los próximos ingresos"),
         C("url_plataforma", "Dirección de la plataforma", "url", opcional=True, ayuda="Para los enlaces de los avisos, por ejemplo http://10.0.0.1:8080"),
         C("adjunto_max_mb", "Máximo por archivo (MB)", "entero", min=1, max=60),
@@ -290,6 +291,10 @@ def guardar(db: Session, yo: Usuario, grupo: str, datos: dict, borrar: list[str]
                   and c["clave"] not in secretos and c["clave"] not in borrar]
         if antes != ahora and ahora[0] and faltan:
             raise ErrorConfig(f"Cambió el servidor: por seguridad vuelva a escribir {', '.join(faltan)}")
+    if grupo == "general":
+        for (k1, e1), (k2, e2) in zip(SLA, SLA[1:]):
+            if int(actual(f"sla_{k1}")) > int(actual(f"sla_{k2}")):
+                raise ErrorConfig(f"El SLA de {e1} no puede ser mayor que el de {e2}")
     if grupo == "avisos":
         clave = secretos.get("smtp_clave") or (settings.smtp_clave if "smtp_clave" not in borrar else None)
         if actual("smtp_seguridad") == "NINGUNA" and (actual("smtp_usuario") or clave):

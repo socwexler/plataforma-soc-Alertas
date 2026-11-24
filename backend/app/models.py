@@ -9,6 +9,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from .config import settings
 from .db import Base
 
 ROLES = ("N1", "N2", "N3", "LIDER", "CISO", "ADMIN")
@@ -196,6 +197,17 @@ class Caso(Base):
     def minutos_respuesta(self) -> int | None:
         if self.fecha_evento and self.fecha_reporte:
             return int((self.fecha_reporte - self.fecha_evento).total_seconds() // 60)
+        return None
+
+    @property
+    def sla_minutos(self) -> int:
+        """Objetivo de notificación según la criticidad (sin criticidad, el de Media)."""
+        return settings.sla_objetivos.get(self.criticidad or "Media", settings.sla_media)
+
+    @property
+    def dentro_sla(self) -> bool | None:
+        if self.fecha_evento and self.fecha_reporte:
+            return (self.fecha_reporte - self.fecha_evento).total_seconds() <= self.sla_minutos * 60
         return None
 
 

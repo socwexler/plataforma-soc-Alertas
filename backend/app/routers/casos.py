@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from ..config import settings
 from ..db import get_db
-from .. import adjuntos, avisos, correo, glpi
+from .. import adjuntos, avisos, correo, glpi, sla
 from ..notificacion import construir_notificacion
 from ..auditoria import registrar
 from ..informes.periodos import etiqueta, ultimos
@@ -105,12 +105,11 @@ def resumen(db: Session = Depends(get_db), yo: Usuario = Depends(requiere("table
     def contar(*f):
         return db.scalar(select(func.count()).select_from(Caso).where(VIGENTE, *f))
 
-    minutos = (func.extract("epoch", Caso.fecha_reporte - Caso.fecha_evento) / 60)
     mediana = db.scalar(
-        select(func.percentile_cont(0.5).within_group(minutos))
-        .where(VIGENTE, Caso.fecha_bitacora >= hace30, Caso.fecha_reporte.is_not(None), Caso.fecha_evento.is_not(None))
+        select(func.percentile_cont(0.5).within_group(sla.MINUTOS))
+        .where(VIGENTE, Caso.fecha_bitacora >= hace30, sla.CON_TIEMPO)
     )
-    fuera_sla = contar(Caso.fecha_bitacora >= hace30, minutos > settings.sla_minutos)
+    fuera_sla = contar(Caso.fecha_bitacora >= hace30, sla.fuera())
     por_estado = dict(db.execute(
         select(Caso.estado, func.count()).where(VIGENTE, Caso.fecha_bitacora >= hace30).group_by(Caso.estado)
     ).all())
@@ -124,7 +123,8 @@ def resumen(db: Session = Depends(get_db), yo: Usuario = Depends(requiere("table
         "ultimos_30": contar(Caso.fecha_bitacora >= hace30),
         "mediana_minutos_30": round(mediana) if mediana is not None else None,
         "fuera_sla_30": fuera_sla,
-        "sla_minutos": settings.sla_minutos,
+        "con_tiempo_30": contar(Caso.fecha_bitacora >= hace30, sla.CON_TIEMPO),
+        "sla": settings.sla_objetivos,
         "por_estado_30": por_estado,
         "por_cliente_30": [{"codigo": c, "total": n} for c, n in por_cliente],
     }

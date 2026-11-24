@@ -131,9 +131,10 @@ En el menú **Tablero** hay filtros de periodo (con accesos rápidos: hoy, 7 dí
   - Casos de criticidad alta o crítica.
   - Porcentaje con retroalimentación.
   - Tiempo mediano entre la alerta y el reporte.
-  - Porcentaje dentro del SLA (`SLA_MINUTOS`).
+  - Porcentaje dentro del SLA de su criticidad.
   - Tickets GLPI abiertos.
 - **Casos por día y criticidad:** gráfico con detalle al pasar el mouse y vista de tabla.
+- **Cumplimiento del SLA por criticidad:** objetivo, casos dentro y fuera, porcentaje y tiempo mediano.
 - **Tabla por analista:** casos, alta o crítica, con y sin retroalimentación, tiempo mediano, % SLA, tickets y último caso.
 - **Distribuciones:**
   - Estado de los casos y de los tickets GLPI.
@@ -293,7 +294,8 @@ El N1 reporta de inmediato al cliente y el caso queda **Por revisar**. Un N2 o s
 
 Menú *Configuración* (Líder SOC y Administrador). Lo guardado allí reemplaza al `.env` de inmediato, sin reiniciar; *Restablecer* vuelve a los valores de la instalación.
 
-- **General:** SLA, duración de la sesión, límites de archivos, fondo del mapa, dirección de la plataforma.
+- **SLA de notificación por criticidad** (en *General*): minutos entre la alerta del SIEM y el reporte al cliente. Predeterminado: crítica 35, alta 45, media 120 y baja 240. Se aplica también a los casos ya registrados; los informes finales no cambian. Una criticidad no puede tener un plazo mayor que la siguiente menos grave. El antiguo `SLA_MINUTOS` del `.env` ya no se usa.
+- **General:** duración de la sesión, límites de archivos, fondo del mapa, dirección de la plataforma.
 - **Correo al cliente:** copias fijas, dominio propio, plazo, marca TLP. La alerta sigue siendo un borrador: no se envía.
 - **Avisos internos:** correo SMTP **solo al dominio propio** para casos por revisar (agrupados), devueltos (al analista) y fallas de GLPI. Llevan número, cliente, alerta y criticidad. Si el correo falla, el caso se guarda igual y se reintenta hasta 6 veces; a las 24 horas se descarta.
 - **GLPI** y **FortiSIEM:** conexión y prueba. De FortiSIEM solo se prueba; los anexos se cargan por archivo.

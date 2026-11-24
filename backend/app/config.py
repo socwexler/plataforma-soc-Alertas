@@ -9,7 +9,11 @@ class Settings(BaseSettings):
     jwt_horas: int = 10
     admin_usuario: str = "admin"
     admin_password: str | None = None
-    sla_minutos: int = 60
+    # SLA de notificación por criticidad: minutos entre la alerta del SIEM y el reporte al cliente
+    sla_critica: int = 35
+    sla_alta: int = 45
+    sla_media: int = 120
+    sla_baja: int = 240
     zona_horaria: str = "America/Bogota"
 
     # GLPI 10 (API REST). Si glpi_url está vacío la integración queda desactivada.
@@ -63,6 +67,10 @@ class Settings(BaseSettings):
     fortisiem_usuario: str | None = None
     fortisiem_clave: str | None = None
     fortisiem_verificar_ssl: bool = True
+
+    @property
+    def sla_objetivos(self) -> dict[str, int]:
+        return {"Crítica": self.sla_critica, "Alta": self.sla_alta, "Media": self.sla_media, "Baja": self.sla_baja}
 
     @property
     def glpi_activo(self) -> bool:
