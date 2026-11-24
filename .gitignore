@@ -1,0 +1,28 @@
+# claves y datos: nunca al repositorio
+.env
+.env.*
+!.env.example
+datos/
+control.json
+*.dump
+*.sql.gz
+*.xlsx
+*.xlsm
+*.csv
+*.eml
+*.pem
+*.key
+*.pfx
+*.tar.gz
+
+# generados
+__pycache__/
+*.pyc
+node_modules/
+dist/
+.venv/
+pruebas/sal/
+.vscode/
+.claude/
+.DS_Store
+Thumbs.db

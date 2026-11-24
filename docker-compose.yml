@@ -1,0 +1,53 @@
+name: plataforma-soc
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-soc}
+      POSTGRES_USER: ${POSTGRES_USER:-soc}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD en .env}
+      TZ: America/Bogota
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-soc} -d ${POSTGRES_DB:-soc}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-soc}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-soc}
+      TZ: America/Bogota
+    volumes:
+      # Carpeta con los Excel/CSV a migrar (solo lectura)
+      - ${DATOS_DIR:-./datos}:/datos:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      convertidor:
+        condition: service_started
+
+  convertidor:
+    # Gotenberg: Word -> PDF (LibreOffice) y presentación HTML -> PDF (Chromium). Solo en la red interna.
+    build: ./convertidor
+    restart: unless-stopped
+    command: ["gotenberg", "--api-timeout=120s", "--libreoffice-restart-after=50"]
+
+  web:
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
