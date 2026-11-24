@@ -319,6 +319,7 @@ Seguridad:
 - **Deshabilitar** conserva el historial: el usuario no ingresa y pierde la sesión abierta; el cliente no recibe casos, informes ni correos nuevos; el caso de uso no aparece al registrar. Los casos existentes se siguen gestionando.
 - Nadie se deshabilita ni se elimina a sí mismo, y el Líder no toca administradores: siempre queda al menos un administrador.
 - El administrador del `.env` solo se crea si no existe ninguno.
+- **Ingreso:** no hay registro ni recuperación por correo; quien olvida la contraseña la pide al Líder o al Administrador. *Recordar mi usuario* guarda solo el nombre de usuario en ese navegador.
 - **Registro de cambios** (*Usuarios → Registro de cambios*): quién, cuándo y qué. No se puede modificar desde la aplicación. Nunca guarda contraseñas.
 - Los casos no se eliminan: se anulan.
 

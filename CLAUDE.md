@@ -10,7 +10,7 @@ Docker Compose: `db` (PostgreSQL 16), `api` (FastAPI, SQLAlchemy 2, Alembic, Pyt
 - `routers/`: `casos`, `casos_uso` (base de conocimiento), `clientes`, `usuarios`, `informes`, `tablero`, `importaciones`, `glpi_api`, `auth`.
 - `importacion.py` (bitácora Excel; `Cronologia` deduce fechas que cruzan la medianoche), `correo.py` + `notificacion.py` (borrador `.eml` y plantilla de alerta), `adjuntos.py` e `imagenes.py` (validación de archivos), `auditoria.py` (registro de cambios), `glpi.py`, `configuracion.py` (parámetros de pantalla sobre `settings`, cifrado y destinos permitidos), `avisos.py` (cola y envío SMTP interno). `routers/externo.py`: consulta de solo lectura con clave.
 - `informes/`: `anexos` (CSV/Excel de FortiSIEM), `metricas`, `textos`, `contenido`, `word` (python-docx sobre la plantilla corporativa), `presentacion_html` + `plantillas/presentacion.{html,css,js}`, `mapa` (coordenadas de países), `convertidor`.
-- `frontend/src`: `pages/`, `components/` (`Ui`, `Adjuntos`, `Imagen`, `Layout`), `auth.jsx` (`puede("permiso")`), `util.js`.
+- `frontend/src`: `pages/`, `components/` (`Ui`, `Adjuntos`, `Imagen`, `Layout`), `auth.jsx` (`puede("permiso")`), `util.js`, `login.css` (ingreso, mismo diseño de CYWEX; «Recordar mi usuario» guarda solo el nombre en el navegador).
 - Esquema: `backend/migraciones/versions` (última **0013**). La API aplica sola las migraciones al iniciar. Al crear una, subir también el número que espera `instalar.sh`.
 
 ## Reglas que no se deben romper

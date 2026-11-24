@@ -153,9 +153,6 @@ table.tabla { width: 100%; border-collapse: collapse; }
 .tabs button.activo { color: var(--texto); border-color: var(--acento); font-weight: 600; }
 .vista-correo { border: 1px solid var(--borde); border-radius: 6px; padding: 12px; overflow: auto; max-height: 520px; }
 
-.login { min-height: 100vh; display: grid; place-items: center; background: linear-gradient(160deg, var(--navy) 0%, #0b1f37 60%, #123d4f 100%); padding: 16px; }
-.login .caja { background: #fff; width: min(380px, 100%); border-radius: 12px; padding: 30px; box-shadow: 0 20px 60px rgba(0, 0, 0, .35); }
-.login .caja h1 { margin: 12px 0 4px; }
 
 @media (max-width: 1100px) {
   .detalle-caso { grid-template-columns: 1fr; }
