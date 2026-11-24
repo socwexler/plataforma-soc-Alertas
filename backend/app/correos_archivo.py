@@ -11,11 +11,15 @@ class ErrorCorreoArchivo(ValueError):
     pass
 
 
+# Un borrador sin enviar (como el que genera la plataforma) no trae remitente ni fecha
+CABECERAS = ("From", "To", "Cc", "Bcc", "Subject", "Date", "Message-ID", "Received", "MIME-Version", "X-Unsent")
+
+
 def adjuntos_eml(datos: bytes) -> list[str]:
     """Nombres de los archivos que trae un .eml (incluye los de correos anidados)."""
     try:
-        m = message_from_bytes(datos, policy=default)
-        if b"\x00" in datos[:65536] or not m["From"] or not any(m[k] for k in ("Date", "Message-ID", "Received", "To")):
+        m = message_from_bytes(datos.removeprefix(b"\xef\xbb\xbf").lstrip(), policy=default)
+        if b"\x00" in datos[:65536] or not (m["From"] or m["To"] or m["Subject"]) or sum(1 for k in CABECERAS if m[k]) < 2:
             raise ErrorCorreoArchivo("el contenido no es un correo")
         # un correo anidado se llama como su asunto, que puede terminar en «.com»
         return [n for p in m.walk() if p.get_content_type() != "message/rfc822" and (n := p.get_filename())]

@@ -12,6 +12,9 @@ export default function CambioEstado({ caso, estado, onAceptar, onCerrar }) {
   const mismo = estado === caso.estado;
   const agregar = (lista) => { const n = [...lista]; if (n.length) setArchivos((l) => [...l, ...n]); };   // copiar antes: al limpiar la entrada la lista queda vacía
 
+  // archivo de otro caso (p. ej. WX123_CLIENTE.eml): se avisa, no se bloquea
+  const otros = [...new Set(archivos.flatMap((a) => a.name.toUpperCase().match(/WX(?:NOC)?\d+/g) || []))].filter((x) => x !== caso.numero);
+
   return (
     <Confirmar titulo={mismo ? `Agregar evidencia · ${caso.numero}` : `${caso.numero}: ${ESTADOS[caso.estado]} → ${ESTADOS[estado]}`}
                boton={mismo ? "Agregar evidencia" : "Cambiar estado"} listo={!mismo || archivos.length > 0}
@@ -34,6 +37,7 @@ export default function CambioEstado({ caso, estado, onAceptar, onCerrar }) {
             <button type="button" className="btn chico peligro" onClick={() => setArchivos((l) => l.filter((_, k) => k !== i))}>Quitar</button>
           </div>
         ))}
+        {otros.length > 0 && <div className="alerta aviso" style={{ margin: "10px 0 0" }}>El nombre del archivo menciona <b>{otros.join(", ")}</b> y este caso es <b>{caso.numero}</b>. Revise que sea el correcto.</div>}
         <p className="tenue" style={{ margin: "10px 0 0", fontSize: 13 }}>Queda en el seguimiento del caso con su nombre. Los archivos son internos: no van en la plantilla ni en el correo al cliente.</p>
       </div>
     </Confirmar>
