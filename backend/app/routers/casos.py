@@ -513,4 +513,4 @@ def notificacion(cid: int, db: Session = Depends(get_db), _=Depends(usuario_actu
     c = db.get(Caso, cid)
     if not c:
         raise HTTPException(404, "Caso no encontrado")
-    return construir_notificacion(c)
+    return construir_notificacion(c, correo.evidencias_en_linea(c))

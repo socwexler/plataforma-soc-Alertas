@@ -276,7 +276,7 @@ export default function CasoForm() {
           {archivos.map((x, i) => (
             <div key={i} className="adjunto">
               <span className="mini ext">{x.archivo.name.split(".").pop().toUpperCase()}</span>
-              <div style={{ flex: 1 }}>{x.archivo.name}<div className="tenue" style={{ fontSize: 12 }}>{x.tipo === "EVIDENCIA" ? "Evidencia" : "Adjunto"} · {peso(x.archivo.size)}</div></div>
+              <div style={{ flex: 1 }}>{x.archivo.name}<div className="tenue" style={{ fontSize: 12 }}>{x.tipo === "EVIDENCIA" ? "Evidencia (en la plantilla)" : "Adjunto (archivo aparte)"} · {peso(x.archivo.size)}</div></div>
               <button type="button" className="btn chico peligro" onClick={() => setArchivos((l) => l.filter((_, k) => k !== i))}>Quitar</button>
             </div>
           ))}

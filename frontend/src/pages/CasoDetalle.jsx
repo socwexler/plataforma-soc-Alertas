@@ -31,10 +31,11 @@ export default function CasoDetalle() {
   const [motivo, setMotivo] = useState("");
   useEffect(() => { infoGlpi(api).then(setGlpi); }, []);
 
+  const cargarNotif = useCallback(() => api(`/casos/${id}/notificacion`).then(setNotif).catch(setError), [id]);
   const cargar = useCallback(() => {
     api(`/casos/${id}`).then(setC).catch(setError);
-    api(`/casos/${id}/notificacion`).then(setNotif).catch(setError);
-  }, [id]);
+    cargarNotif();
+  }, [id, cargarNotif]);
   useEffect(cargar, [cargar]);
 
   if (!c) return error ? <MsgError e={error} /> : <div className="vacio">Cargando…</div>;
@@ -163,7 +164,7 @@ export default function CasoDetalle() {
           </div>
 
           <Adjuntos caso={c} editable={puedeEditar} onError={setError}
-                    onCambio={(x) => { setC(x); window.dispatchEvent(new Event("revision-cambio")); if (tab === "correo") verCorreo(); }} />
+                    onCambio={(x) => { setC(x); cargarNotif(); window.dispatchEvent(new Event("revision-cambio")); if (tab === "correo") verCorreo(); }} />
 
           <div className="panel">
             <div className="tabs">

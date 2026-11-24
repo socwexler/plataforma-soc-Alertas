@@ -64,7 +64,7 @@ Nadie escribe destinatarios al enviar: salen del cliente del caso.
 
 ## Evidencias y adjuntos
 
-- **Evidencia:** imagen PNG o JPG; sale dentro del recuadro *Evidencias* del correo. Se puede pegar un recorte con Ctrl+V. Se guarda sin metadatos (autor, equipo, ubicación).
+- **Evidencia:** imagen PNG o JPG; sale dentro del recuadro *Evidencias* de la plantilla: en la pestaña *Notificación* (y al copiarla) y en el borrador de Outlook. Se puede pegar un recorte con Ctrl+V. Se guarda sin metadatos (autor, equipo, ubicación).
 - **Adjunto:** pdf, docx, xlsx, pptx, csv, txt, log, json, zip, png, jpg; va pegado al correo.
 - *En el correo* decide si el archivo se envía al cliente; desmarcado queda solo en el caso.
 - **Quién:** los ven y descargan todos los roles; los agrega o quita quien puede editar el caso. Todo queda en el seguimiento. Si un N1 cambia archivos de un caso revisado, vuelve a *Por revisar*.

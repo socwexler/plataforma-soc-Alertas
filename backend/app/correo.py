@@ -115,6 +115,11 @@ def _evidencias(c: Caso, src) -> list[tuple[str, int, str]]:
     return [(src(a), min(a.ancho or ANCHO, ANCHO - 30), a.nombre) for a in c.adjuntos if a.incluir and a.tipo == "EVIDENCIA"]
 
 
+def evidencias_en_linea(c: Caso) -> list[tuple[str, int, str]]:
+    """Evidencias incrustadas en el propio HTML: para verlas en pantalla y copiarlas con la plantilla."""
+    return _evidencias(c, lambda a: f"data:{a.mime};base64,{base64.b64encode(a.contenido).decode()}")
+
+
 def _codigo_en(nombre: str, codigo: str) -> bool:
     return re.search(r"(?<![a-z0-9])" + re.escape(codigo.lower()) + r"(?![a-z0-9])", nombre.lower()) is not None
 
@@ -122,7 +127,7 @@ def _codigo_en(nombre: str, codigo: str) -> bool:
 def preparar(db: Session, c: Caso) -> dict:
     """Destinatarios, asunto y comprobaciones. `bloqueos` impide generar; `advertencias` exige confirmar."""
     cl = c.cliente
-    n = construir_notificacion(c, _evidencias(c, lambda a: f"data:{a.mime};base64,{base64.b64encode(a.contenido).decode()}"))
+    n = construir_notificacion(c, evidencias_en_linea(c))
     incluidos = [a for a in c.adjuntos if a.incluir]
     para, cc = list(cl.correos_para or []), list(cl.correos_cc or [])
     cc += [x for x in leer_correos(settings.correo_cc) if x not in cc and x not in para]

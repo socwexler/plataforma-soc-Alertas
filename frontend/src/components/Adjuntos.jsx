@@ -76,7 +76,7 @@ export default function Adjuntos({ caso, editable, onCambio, onError }) {
           {a.mime.startsWith("image/") ? <Miniatura casoId={caso.id} a={a} /> : <span className="mini ext">{a.nombre.split(".").pop().toUpperCase()}</span>}
           <div style={{ flex: 1, minWidth: 0 }}>
             <button className="enlace" onClick={() => abrir(a)}>{a.nombre}</button>
-            <div className="tenue" style={{ fontSize: 12 }}>{a.tipo === "EVIDENCIA" ? "Evidencia" : "Adjunto"} · {peso(a.tamano)} · {a.subido_por}</div>
+            <div className="tenue" style={{ fontSize: 12 }}>{a.tipo === "EVIDENCIA" ? "Evidencia (en la plantilla)" : "Adjunto (archivo aparte)"} · {peso(a.tamano)} · {a.subido_por}</div>
           </div>
           <label className="check" style={{ fontSize: 13 }}>
             <input type="checkbox" checked={a.incluir} disabled={!editable || ocupado} onChange={(e) => { const incluir = e.target.checked; hacer(() => api(`/casos/${caso.id}/adjuntos/${a.id}`, { metodo: "PATCH", datos: { incluir } })); }} /> En el correo
