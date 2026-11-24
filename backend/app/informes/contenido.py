@@ -104,4 +104,7 @@ def armar(informe, metricas: dict, svg: bool = False) -> dict:
         "recomendaciones": [r.strip(" •-\t") for r in (tx.get("recomendaciones") or "").split("\n") if r.strip()],
         "generado": date.today().strftime("%d/%m/%Y"),
         "n": n, "pct": pct,
+        "mostrar_tiempos": bool(metricas.get("mostrar_tiempos")),
+        # finales anteriores a esta opción: su Word se emitió con los tiempos y no cambia
+        "tiempos_word": bool(metricas.get("mostrar_tiempos", informe.estado == "FINAL")),
     }

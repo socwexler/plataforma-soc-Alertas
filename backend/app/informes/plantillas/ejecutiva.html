@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Informe ejecutivo {{ cliente.codigo }} · {{ titulo_mes }}</title>
+<link rel="icon" href="{{ rec.iso }}">
+<style>
+{{ rec.fuentes }}
+:root { --iso: url("{{ rec.iso }}");{% if logo %} --cli: url("{{ logo }}");{% endif %} }
+{{ rec.css }}
+{{ rec.css_ejec }}
+</style>
+</head>
+<body class="ejec{% if pdf %} pdf{% endif %}">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol><symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+<symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+<symbol id="i-full" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></symbol>
+<symbol id="i-note" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+<symbol id="i-pdf" viewBox="0 0 24 24"><path d="M12 3v12m0 0-4-4m4 4 4-4M4 19h16"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 5 3.4 9.3 8 11 4.6-1.7 8-6 8-11V5zM12 8v5m0 3h.01"/></symbol>
+<symbol id="i-radar" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9M12 7a5 5 0 1 0 5 5M12 12 19 5M12 12h.01"/></symbol>
+<symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4zM8 9h8M8 12h5"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M9 4h6v3H9zM7 5H5v15h14V5h-2M9 13l2 2 4-4"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2"/></symbol>
+<symbol id="i-cal" viewBox="0 0 24 24"><path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4"/></symbol>
+<symbol id="i-bars" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-8M21 20H3"/></symbol>
+<symbol id="i-target" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 1v4M12 19v4M1 12h4M19 12h4"/></symbol>
+<symbol id="i-globe" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></symbol>
+<symbol id="i-server" viewBox="0 0 24 24"><path d="M4 4h16v7H4zM4 13h16v7H4zM8 7.5h.01M8 16.5h.01"/></symbol>
+<symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></symbol>
+<symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 3 2 20h20zM12 10v4m0 3h.01"/></symbol>
+</svg>
+{% macro parrafos(texto) %}{% for p in (texto or '').split('\n\n') if p.strip() %}<p>{{ p }}</p>{% endfor %}{% endmacro %}
+{% macro ico(i, c='') %}<span class="ico {{ c }}"><svg class="i"><use href="#i-{{ i }}"/></svg></span>{% endmacro %}
+{% macro lcli() %}{% if logo %}<div class="clogo{% if logo_claro %} oscuro{% endif %}"><i></i></div>{% endif %}{% endmacro %}
+{% macro cab(t1, em, chips=[]) %}<div class="chips-top" data-a>{% for a, b in chips %}<div class="chip-top"><span>{{ a }}</span><b>{{ b }}</b></div>{% endfor %}{{ lcli() }}</div>
+  <div class="marca" data-a><i></i><i></i><i></i><i></i><i></i></div><h2 data-a style="--d:1">{{ t1 }} · <em>{{ em }}</em></h2>{% endmacro %}
+{% macro anillo(f, texto, sub, color) %}<div class="ring"><svg viewBox="0 0 250 250"><circle cx="125" cy="125" r="105" fill="none" stroke="rgba(130,132,145,.22)" stroke-width="22"/><circle class="arc" cx="125" cy="125" r="105" fill="none" stroke="{{ color }}" stroke-width="22" style="--c0:659.7;--off:{{ (659.7 * (1 - [[f, 0] | max, 1] | min)) | round(1) }}"/></svg><div class="in"><b data-cuenta>{{ texto }}</b><span>{{ sub }}</span></div></div>{% endmacro %}
+{% macro apilada(crit) %}<div class="apilada">{% for c in crits if crit[c] %}<i class="k-{{ c }}" style="flex:{{ crit[c] }} 0 0" data-tip="{{ c }}: {{ n(crit[c]) }}">{{ n(crit[c]) }}</i>{% endfor %}</div><div class="ley">{% for c in crits %}<span class="k-{{ c }}"><i></i>{{ c }}</span>{% endfor %}</div>{% endmacro %}
+{% macro hb(items, campo, et='46%', color='', max=8, gap='13px', llena='') %}{% set mx = [items | map(attribute='total') | max, 1] | max %}<div class="hb {{ llena }}" style="--et:{{ et }};--gap:{{ gap }}">{% for x in items[:max] %}<div data-tip="{{ x[campo] }}&#10;{{ n(x.total) }}"><span class="t">{{ x[campo] }}</span><u class="{{ color }}"><span style="--w:{{ [x.total / mx * 100, 1] | max | round(2) }}%"><i></i></span></u><b>{{ n(x.total) }}</b></div>{% endfor %}</div>{% endmacro %}
+{% macro lado(titulo, i='check') %}<div class="lado" data-a style="--d:4"><h3>{{ ico(i, 'r') }}{{ titulo }}</h3>{{ caller() }}</div>{% endmacro %}
+{% macro circulo() %}<svg class="circ" viewBox="0 0 900 900" aria-hidden="true"><defs><radialGradient id="gl"><stop offset="0" stop-color="#ff0040" stop-opacity=".55"/><stop offset="1" stop-color="#ff0040" stop-opacity="0"/></radialGradient></defs><circle cx="450" cy="450" r="330" fill="url(#gl)"/>
+  <g class="giro" fill="none"><circle cx="450" cy="450" r="405" stroke="#ff5c83" stroke-width="2" stroke-dasharray="520 320 260 160"/><circle cx="450" cy="450" r="345" stroke="#c0003a" stroke-width="22" stroke-dasharray="420 122 420 122" opacity=".85"/></g><g class="giro inv" fill="none"><circle cx="450" cy="450" r="300" stroke="rgba(255,255,255,.35)" stroke-width="1.5" stroke-dasharray="4 10"/><circle cx="450" cy="450" r="375" stroke="rgba(255,255,255,.18)" stroke-width="1" stroke-dasharray="180 60"/></g>
+  <g fill="none" stroke="#ff2d5f" stroke-width="2" stroke-dasharray="7 9" opacity=".8"><path d="M690 230h70l50-60h90M760 560h50l40 60h60M200 720l-50 60H60M240 180l-40-60H90"/></g><g fill="#ff5c83"><circle cx="690" cy="230" r="6"/><circle cx="760" cy="560" r="6"/><circle cx="200" cy="720" r="6"/><circle cx="240" cy="180" r="6"/></g>
+  <g transform="translate(450 450)"><rect x="-165" y="-165" width="330" height="330" rx="34" fill="#1c1a1e" stroke="#4a444c" stroke-width="3"/><g stroke="#5b545d" stroke-width="7">{% for k in range(-6, 7) %}<path d="M{{ k * 23 }} -190v22M{{ k * 23 }} 168v22M-190 {{ k * 23 }}h22M168 {{ k * 23 }}h22"/>{% endfor %}</g><circle r="120" fill="#300010"/><image href="{{ rec.iso }}" x="-92" y="-92" width="184" height="184"/></g></svg>{% endmacro %}
+{% set soc = serv.get('SOC') or (serv.values() | list)[0] if serv else none %}
+{% set s0 = 'SOC' if 'SOC' in serv else (serv.keys() | list)[0] if serv else none %}
+
+<div id="progress"></div>
+<div id="viewport"><div id="stage">
+<!-- Portada -->
+<section class="slide portada" data-title="Portada" data-notes="{{ t.objetivo }}">{{ circulo() }}
+  <div class="izq"><img class="logo" src="{{ rec.logo }}" alt="Wexler" data-a>
+    <div class="mid"><div class="fecha" data-a style="--d:1"><svg class="i" width="26" height="26"><use href="#i-cal"/></svg>{{ periodo }}</div>
+      <h1 data-a style="--d:2"><em>Informe</em><br>ejecutivo {{ servicios_txt }}</h1><div class="cli" data-a style="--d:3">{{ cliente.nombre }}</div>
+      <div class="sub" data-a style="--d:3">Monitoreo de eventos de seguridad 7x24 · {{ titulo_mes }}{% if informe.estado == 'BORRADOR' %} · Borrador{% endif %}</div></div>
+    <div data-a style="--d:4">{{ lcli() }}</div></div>
+  {% if soc %}<div class="flota" data-a style="right:90px;top:110px;--d:4"><span>Eventos escalados</span><b data-cuenta>{{ n(soc.actual.total) }}</b><div class="mini">{% set mx = [soc.d.periodos | map(attribute='total') | max, 1] | max %}{% for p in soc.d.periodos %}<i style="--ht:{{ (p.total / mx * 100) | round }}%"></i>{% endfor %}</div></div>
+  <div class="flota" data-a style="right:70px;bottom:270px;--d:5"><span>Con retroalimentación</span><b data-cuenta>{{ soc.retro_pct }}</b></div>{% endif %}
+  {% if total_fuentes %}<div class="flota" data-a style="right:620px;bottom:100px;--d:6"><span>Fuentes monitoreadas</span><b data-cuenta>{{ n(total_fuentes) }}</b></div>{% endif %}
+</section>
+
+<!-- Resumen -->
+{% if soc %}{% set A = soc.actual %}{% set X = ex[s0] %}
+<section class="slide" data-title="Resumen ejecutivo" data-sec="{{ num.resumen }}" data-notes="{{ t.conclusiones }}">
+  {{ cab('Resumen ejecutivo', titulo_mes, [(kpis[1][0], kpis[1][1])] if kpis | length > 1 and kpis[1][0] != 'Con retroalimentación' else []) }}
+  <div class="cuerpo"><div class="g lat"><div class="filas" style="grid-template-rows:auto auto 1fr">
+    <div class="tj gris" data-a style="--d:2"><div class="banda"><div><h3>{{ ico('radar') }}Eventos escalados</h3><div class="big"><span data-cuenta>{{ n(A.total) }}</span><small>eventos {{ s0 }}</small></div></div>
+      <div><div class="resumen-l">{% for c in crits if A.criticidad[c] %}<span class="k-{{ c }}"><b>{{ n(A.criticidad[c]) }}</b> {{ c | lower }}</span>{% endfor %}{% if X.var %}<span class="pastilla">{{ X.var.signo }} {{ n(X.var.dif) }} vs. periodo anterior</span>{% endif %}</div>{{ apilada(A.criticidad) }}</div></div></div>
+    <div class="g dos" style="height:auto">
+      <div class="tj" data-a style="--d:3"><h3>{{ ico('chat') }}Retroalimentación del cliente</h3><div class="anillo">{{ anillo(X.retro_f, soc.retro_pct, 'con respuesta', '#0b7a4b') }}<div class="lista-v"><div style="--k:#0b7a4b">Con retroalimentación<b>{{ n(A.con_retro) }}</b></div><div style="--k:#d97200">Sin retroalimentación<b>{{ n(A.sin_retro) }}</b></div><div>Total<b>{{ n(A.total) }}</b></div></div></div></div>
+      {% if X.sla %}<div class="tj" data-a style="--d:3"><h3>{{ ico('clock') }}Tiempo de notificación</h3><div class="anillo">{{ anillo(X.sla_f, X.sla, 'en objetivo', '#e4003a') }}<div class="lista-v"><div>Mediana<b>{{ n(A.mediana_minutos) }} min</b></div><div style="--k:#0b7a4b">En {{ sla_minutos }} min o menos<b>{{ n(A.dentro_sla) }}</b></div><div style="--k:#d97200">Después<b>{{ n(A.con_tiempo - A.dentro_sla) }}</b></div></div></div></div>
+      {% elif soc.d.top_alertas %}<div class="tj" data-a style="--d:3"><h3>{{ ico('warn') }}Alertas principales</h3>{{ hb(soc.d.top_alertas, 'alerta', max=4) }}</div>{% endif %}</div>
+    <div class="tj" data-a style="--d:4"><h3>{{ ico('target') }}Balance del periodo</h3><div class="story" data-fit>{{ parrafos(t.conclusiones) }}</div></div>
+  </div>
+  {% call lado('Gestión del periodo') %}<p style="font-size:17px;margin-bottom:10px">{{ periodo }}</p><div class="barra-r"><i></i></div><ul data-fit style="font-size:20px">{% for x in gestion %}<li>{{ x }}</li>{% else %}<li>Monitoreo {{ servicios_txt }} 7x24: {{ n(A.total) }} eventos escalados</li>{% endfor %}</ul>{% endcall %}
+  </div></div>
+</section>
+{% endif %}
+
+{% for s, sv in serv.items() %}{% set A = sv.actual %}{% set P = sv.d.periodos %}{% set X = ex[s] %}{% set det = X.det %}{% set mxp = [P | map(attribute='total') | max, 1] | max %}
+<!-- {{ s }} criticidad -->
+<section class="slide" data-title="Eventos por criticidad · {{ s }}" data-sec="{{ num[s] }}" data-notes="{{ t['resumen_' ~ s] }}">
+  {{ cab('Monitoreo ' ~ s, 'Eventos por criticidad', [('Eventos del periodo', n(A.total))]) }}
+  <div class="cuerpo"><div class="g lat"><div class="filas" style="grid-template-rows:1fr auto">
+    <div class="tj" data-a style="--d:2"><h3>{{ ico('bars') }}Comparativo de los tres últimos periodos<small>{{ P[0].corta }} a {{ P[-1].corta }}</small></h3>
+      <div class="cols" style="flex:1;min-height:240px">{% for p in P %}<div class="col"><div class="tot">{{ n(p.total) }}{% if not loop.first %}{% set dif = p.total - P[loop.index0 - 1].total %}<small>{{ '▲' if dif > 0 else '▼' if dif < 0 else '=' }} {{ n(dif | abs) }}</small>{% endif %}</div><div class="stk" style="--ht:{{ (p.total / mxp * 84) | round(2) }}%">{% for c in crits | reverse if p.criticidad[c] %}<i class="k-{{ c }}" style="flex:{{ p.criticidad[c] }} 0 0">{% if p.criticidad[c] / mxp > 0.08 %}{{ n(p.criticidad[c]) }}{% endif %}</i>{% endfor %}</div></div>{% endfor %}</div>
+      <div class="colx">{% for p in P %}<span{% if loop.last %} class="act"{% endif %}>{{ p.corta }}</span>{% endfor %}</div><div class="ley" style="justify-content:center">{% for c in crits %}<span class="k-{{ c }}"><i></i>{{ c }}</span>{% endfor %}</div></div>
+    <div class="tj" data-a style="--d:3" ><table class="tbl"><thead><tr><th>Criticidad</th>{% for p in P %}<th class="n">{{ p.corta }}</th>{% endfor %}<th class="n">% del periodo</th></tr></thead><tbody>{% for c in crits %}<tr class="k-{{ c }}"><td class="s"><i class="pto"></i>{{ c }}</td>{% for p in P %}<td class="n">{{ n(p.criticidad[c]) }}</td>{% endfor %}<td class="n">{{ pct(A.criticidad[c], A.total) }}</td></tr>{% endfor %}<tr class="tot"><td>Total</td>{% for p in P %}<td class="n">{{ n(p.total) }}</td>{% endfor %}<td class="n"></td></tr></tbody></table></div>
+  </div>{% call lado('Lectura del trimestre', 'bars') %}<div class="story" data-fit>{{ parrafos(t['resumen_' ~ s]) }}</div><h4>Retroalimentación</h4><p>{{ t['retro_' ~ s] }}</p>{% endcall %}</div></div>
+</section>
+
+{% if det and A.total %}
+<!-- {{ s }} comportamiento -->
+<section class="slide" data-title="Comportamiento · {{ s }}">
+  {{ cab('Monitoreo ' ~ s, 'Comportamiento en el tiempo', [('Promedio diario', '%.1f' | format(A.total / (X.dias | length or 1)) | replace('.', ','))]) }}
+  <div class="cuerpo"><div class="g lat"><div class="filas" style="grid-template-rows:1.05fr 1fr">
+    <div class="tj" data-a style="--d:2"><h3>{{ ico('cal') }}Eventos por día<small>gris claro: sábado y domingo · rojo: día con más eventos</small></h3><div class="dias" style="flex:1;height:auto;min-height:170px">{% for x in X.dias %}<div class="{{ 'mx' if x.total == X.max_dia else 'fd' if x.finde }}" data-tip="{{ x.num }} {{ x.mes }}: {{ n(x.total) }}"><em>{{ x.total or '' }}</em><u style="--ht:{{ (x.total / X.max_dia * 84) | round(1) }}%"></u></div>{% endfor %}</div><div class="dias-x">{% for x in X.dias %}<span>{{ x.num }}</span>{% endfor %}</div></div>
+    <div class="g dos" style="grid-template-columns:1.7fr 1fr"><div class="tj" data-a style="--d:3"><h3>{{ ico('clock') }}Eventos por hora<small>hora de Colombia</small></h3><div class="horas" style="flex:1;align-content:center">{% for v in det.por_hora %}{% set f = v / X.max_hora %}<div style="--f:{{ (0.04 + 0.8 * f) | round(2) if v else 0 }}{% if f > 0.55 %};--tx:#fff{% endif %}" data-tip="{{ '%02d' % loop.index0 }}:00 · {{ n(v) }}"><b>{{ v or '–' }}</b><span>{{ '%02d' % loop.index0 }} h</span></div>{% endfor %}</div></div>
+      <div class="tj" data-a style="--d:3"><h3>{{ ico('bars') }}Por día de la semana</h3><div class="hb" style="--et:56px;--gap:12px;flex:1;align-content:center">{% for v in det.por_semana %}<div><span class="t">{{ dias_semana[loop.index0] }}</span><u><span style="--w:{{ (v / X.max_semana * 100) | round(1) }}%"><i></i></span></u><b>{{ n(v) }}</b></div>{% endfor %}</div></div></div>
+  </div>{% call lado('Lectura', 'clock') %}<ul data-fit style="font-size:20px">{% for x in X.lectura %}<li>{{ x }}</li>{% endfor %}</ul>{% if det.tiempos and X.sla %}<h4>Tiempo de notificación</h4>{% set mt = [det.tiempos | map(attribute='total') | max, 1] | max %}{% for x in det.tiempos %}<div class="resp"><span>{{ x.nombre }}</span><u><i style="--w:{{ (x.total / mt * 100) | round(1) }}%"></i></u><b>{{ n(x.total) }}</b></div>{% endfor %}{% endif %}{% endcall %}</div></div>
+</section>
+{% endif %}
+
+{% if sv.d.top_alertas %}{% set mxa = [sv.d.top_alertas | map(attribute='total') | max, 1] | max %}
+<!-- {{ s }} alertas -->
+<section class="slide" data-title="Alertas · {{ s }}" data-notes="{{ t['alertas_' ~ s] }}">
+  {{ cab('Monitoreo ' ~ s, 'Alertas y técnicas', [('Alertas en el top', sv.d.top_alertas | length)]) }}
+  <div class="cuerpo"><div class="g" style="grid-template-columns:1.25fr 1fr"><div class="tj" data-a style="--d:2"><h3>{{ ico('warn') }}Alertas más frecuentes<small>color según criticidad</small></h3><div class="hb" style="--et:52%;--gap:17px;flex:1;align-content:space-evenly">{% for x in sv.d.top_alertas %}<div><span class="t">{{ x.alerta }}</span><u><span style="--w:{{ [x.total / mxa * 100, 1] | max | round(2) }}%">{% for c in crits_sin if x.por_criticidad.get(c) %}<i class="k-{{ c }}" style="flex:{{ x.por_criticidad[c] }} 0 0;width:auto"></i>{% endfor %}</span></u><b>{{ n(x.total) }}</b></div>{% endfor %}</div></div>
+    <div class="filas" style="grid-template-rows:auto 1fr">{% if det and det.tecnicas %}<div class="tj" data-a style="--d:3"><h3>{{ ico('target') }}Técnicas observadas</h3>{{ hb(det.tecnicas, 'nombre', '58%', max=7, gap='15px') }}</div>{% endif %}<div class="tj gris" data-a style="--d:4"><h3>{{ ico('chat') }}Análisis</h3><div class="story" data-fit>{{ parrafos(t['alertas_' ~ s]) }}</div></div></div></div></div>
+</section>
+{% endif %}
+
+{% if s == 'SOC' and sv.d.tacticas %}{% set ns = namespace(m=1) %}{% for x in sv.d.tacticas %}{% for v in x.valores %}{% if v > ns.m %}{% set ns.m = v %}{% endif %}{% endfor %}{% endfor %}
+<!-- MITRE -->
+<section class="slide" data-title="Tácticas MITRE ATT&CK" data-notes="{{ t.categorias_SOC }}">
+  {{ cab('MITRE ATT&CK', 'Tácticas observadas', [('Tácticas', sv.d.tacticas | selectattr('tactica', 'ne', 'Sin táctica') | list | length)]) }}
+  <div class="cuerpo"><div class="g lat"><div class="tj" data-a style="--d:2"><h3>{{ ico('target') }}Evolución por periodo<small>más intenso = más eventos</small></h3><table class="tbl calor"><thead><tr><th>Táctica</th>{% for p in P %}<th class="n">{{ p.corta }}</th>{% endfor %}<th class="n" style="text-align:right">% actual</th></tr></thead><tbody>{% for x in sv.d.tacticas[:13] %}<tr><td class="s">{{ x.tactica }}</td>{% for v in x.valores %}{% set f = v / ns.m %}<td class="n" style="--f:{{ (0.05 + 0.75 * f) | round(3) if v else 0 }}{% if f > 0.6 %};--tx:#fff{% endif %}">{{ n(v) if v else '–' }}</td>{% endfor %}<td style="text-align:right">{{ pct(x.valores[-1], A.total) }}</td></tr>{% endfor %}</tbody></table></div>
+  {% call lado('Lectura del periodo', 'target') %}<div class="story" data-fit>{{ parrafos(t.categorias_SOC) }}</div>{% endcall %}</div></div>
+</section>
+{% endif %}
+
+{% if det and (det.origenes or det.equipos) %}
+<!-- {{ s }} orígenes -->
+<section class="slide" data-title="Origen de los eventos · {{ s }}">
+  {{ cab('Monitoreo ' ~ s, 'Origen de los eventos', []) }}
+  <div class="cuerpo"><div class="g dos">{% if det.origenes %}<div class="tj" data-a style="--d:2"><h3>{{ ico('globe') }}Ubicación registrada<small>según la geolocalización del caso</small></h3>{{ hb(det.origenes, 'nombre', '42%', 's2', llena='llena') }}<div class="pie" data-fit>{{ n(det.origenes | sum(attribute='total')) }} de {{ n(A.total) }} eventos están en estas ubicaciones; los demás no tienen ubicación o son de otras.</div></div>{% endif %}
+    {% if det.equipos %}<div class="tj" data-a style="--d:3"><h3>{{ ico('server') }}Dispositivos que reportan<small>IP del reporte en el SIEM</small></h3>{{ hb(det.equipos, 'nombre', '34%', 'e', llena='llena') }}<div class="pie">Un evento puede involucrar varios dispositivos.</div></div>{% endif %}</div></div>
+</section>
+{% endif %}
+
+{% for grupo in ([] if X.juntos else sv.d.destacados | batch(12)) %}
+<section class="slide" data-title="Eventos destacados · {{ s }}">
+  {{ cab('Monitoreo ' ~ s, 'Eventos de criticidad alta y crítica', [('Destacados', sv.d.destacados | length)]) }}
+  <div class="cuerpo"><div class="tj" data-a style="--d:2"><table class="tbl{% if grupo|length <= 5 %} grande{% endif %}"><thead><tr><th>Número</th><th>Fecha</th><th>Alerta</th><th>Criticidad</th><th>Estado</th></tr></thead><tbody>{% for e in grupo %}<tr><td class="s">{{ e.numero }}</td><td style="white-space:nowrap">{{ e.fecha }}</td><td>{{ e.alerta | truncate(110, True, '…') }}</td><td><span class="tag k-{{ e.criticidad }}">{{ e.criticidad }}</span></td><td style="white-space:nowrap">{{ estados[e.estado] }}</td></tr>{% endfor %}</tbody></table></div></div>
+</section>
+{% endfor %}
+
+{% if det and det.sin_respuesta %}
+<section class="slide" data-title="Pendientes de retroalimentación · {{ s }}">
+  {{ cab('Monitoreo ' ~ s, 'Destacados y pendientes' if X.juntos else 'Pendientes de su retroalimentación', [('Sin respuesta', n(A.sin_retro))]) }}
+  {% set tope = 12 if X.juntos else 18 %}<div class="cuerpo"><div class="g lat"><div class="filas" style="grid-template-rows:{{ 'auto 1fr' if X.juntos else '1fr' }}">{% if X.juntos %}<div class="tj gris" data-a style="--d:2"><h3>{{ ico('warn') }}Eventos de criticidad alta y crítica</h3><table class="tbl"><thead><tr><th>Número</th><th>Fecha</th><th>Alerta</th><th>Criticidad</th><th>Estado</th></tr></thead><tbody>{% for e in sv.d.destacados %}<tr><td class="s">{{ e.numero }}</td><td style="white-space:nowrap">{{ e.fecha }}</td><td>{{ e.alerta | truncate(80, True, '…') }}</td><td><span class="tag k-{{ e.criticidad }}">{{ e.criticidad }}</span></td><td>{{ estados[e.estado] }}</td></tr>{% endfor %}</tbody></table></div>{% endif %}<div class="tj" data-a style="--d:3">{% if X.juntos %}<h3>{{ ico('chat') }}Pendientes de su retroalimentación</h3>{% endif %}<table class="tbl den"><thead><tr><th>Número</th><th>Fecha</th><th>Alerta</th><th>Criticidad</th><th>Ticket</th></tr></thead><tbody>{% for e in det.sin_respuesta[:tope] %}<tr><td class="s">{{ e.numero }}</td><td>{{ e.fecha }}</td><td>{{ e.alerta | truncate(80, True, '…') }}</td><td>{% if e.criticidad %}<span class="tag k-{{ e.criticidad }}">{{ e.criticidad }}</span>{% endif %}</td><td>{{ e.glpi or '–' }}</td></tr>{% endfor %}</tbody></table>{% if A.sin_retro > tope %}<div class="pie">Se muestran {{ tope }} de {{ n(A.sin_retro) }}; los demás están en el anexo.</div>{% endif %}</div></div>
+  {% call lado('Por qué importa', 'chat') %}<div style="display:grid;place-items:center;margin:6px 0 22px">{{ anillo(X.retro_f, sv.retro_pct, 'con respuesta', '#ff5c83') }}</div><div class="story" data-fit><p>Su respuesta permite confirmar si un evento fue legítimo, cerrar el caso y afinar las reglas para reducir alertas repetidas.</p><p>Agradecemos responder a los eventos de esta lista por el correo del reporte, indicando si la actividad era conocida y qué acción se tomó.</p></div>{% endcall %}</div></div>
+</section>
+{% endif %}
+{% endfor %}
+
+{% if num.estado %}
+<section class="slide" data-title="Estado del servicio" data-sec="{{ num.estado }}" data-notes="{{ t.fuentes }}">
+  {{ cab('Estado del servicio', 'Fuentes y capacidad', [('Fuentes integradas', n(total_fuentes))] if total_fuentes else []) }}
+  <div class="cuerpo"><div class="g dos">
+    {% if total_fuentes %}<div class="tj" data-a style="--d:2"><h3>{{ ico('server') }}Fuentes integradas{% if cliente.fuentes_licencia %}<small>{{ n(cliente.fuentes_licencia) }} por licencia</small>{% endif %}</h3>{% if fuentes and fuentes.por_tipo %}{{ hb(fuentes.por_tipo, 'tipo', '34%', 'e', gap='20px') }}{% endif %}{% if fuentes and fuentes.por_estado %}<div class="lista-v" style="margin-top:22px"><h4>Estado en el SIEM</h4>{% for x in fuentes.por_estado[:4] %}<div>{{ x.estado }}<b>{{ n(x.total) }}</b></div>{% endfor %}</div>{% endif %}<div class="story" data-fit style="margin-top:16px">{{ parrafos(t.fuentes) }}</div></div>{% endif %}
+    {% if eps_series %}{% set valores = eps_series | map('last') | list %}{% set tope = [(valores | max), cliente.eps_contratados or 0, 1] | max %}<div class="filas" style="grid-template-rows:auto 1fr">
+      {% if informe.eps_promedio and cliente.eps_contratados %}<div class="tj gris" data-a style="--d:3"><div class="banda" style="grid-template-columns:280px 1fr"><div><h3>{{ ico('bolt') }}Uso de EPS</h3><div class="big">{{ pct(informe.eps_promedio, cliente.eps_contratados) }}</div></div><div><div class="resumen-l"><b>{{ n(informe.eps_promedio) }}</b> en promedio de <b>{{ n(cliente.eps_contratados) }}</b> contratados</div><div class="apilada"><i style="--k:var(--ok);flex:{{ [informe.eps_promedio, 1] | max | round }} 0 0"></i><i style="--k:#d5d6dc;color:#17181c;flex:{{ [cliente.eps_contratados - informe.eps_promedio, 0] | max | round }} 0 0">{% if cliente.eps_contratados > informe.eps_promedio %}{{ n(cliente.eps_contratados - informe.eps_promedio) }} disponibles{% endif %}</i></div></div></div></div>{% endif %}
+      <div class="tj" data-a style="--d:4"><h3>{{ ico('bars') }}Promedio de eventos por segundo</h3><div class="cols" style="flex:1;min-height:200px">{% for p, v in eps_series %}<div class="col"><div class="tot">{{ n(v) }}</div><div class="stk e" style="--ht:{{ (v / ([valores | max, 1] | max) * 78) | round(2) }}%"><i style="flex:1"></i></div></div>{% endfor %}</div><div class="colx">{% for p, v in eps_series %}<span{% if loop.last %} class="act"{% endif %}>{{ p }}</span>{% endfor %}</div><div class="story" style="margin-top:16px" data-fit>{{ parrafos(t.eps) }}</div></div></div>{% endif %}
+  </div></div>
+</section>
+{% endif %}
+
+{% if mapa.entrantes or mapa.salientes %}{% for modo in modos_mapa %}
+<section class="slide" data-title="Mapa de tráfico permitido{% if pdf %} · {{ modo }}{% endif %}" data-sec="{{ num.interes }}" data-notes="{{ t.paises_entrantes }}&#10;&#10;{{ t.paises_salientes }}">
+  {{ cab('Eventos de interés', 'Tráfico permitido' ~ (' (' ~ modo ~ ')' if pdf else ' con otros países'), []) }}
+  <div class="cuerpo"><div class="mapa-lay" data-a style="--d:2"><div class="mapa" data-modo="{{ modo }}"><div class="capa"><div class="base"><div class="cuad"></div><div class="tes"></div><div class="lin"></div></div><svg role="img" aria-label="Mapa de países con tráfico permitido"></svg></div><div class="zoom"><button title="Acercar">+</button><button title="Alejar">−</button><button title="Ver todo">Todo</button></div><div class="credito"></div></div>
+    <div class="panel" style="height:730px;overflow:hidden">{% if mapa.entrantes and mapa.salientes %}<div class="tabs"><button data-modo="ambos">Ambos</button><button data-modo="entrantes" style="--kk:#5f8dff">Entrantes</button><button data-modo="salientes">Salientes</button></div>{% endif %}<div class="rk"></div></div></div>
+    {% if pdf %}<p style="font-size:18px;margin-top:14px">{{ t['paises_' ~ modo] }}</p>{% endif %}</div>
+</section>
+{% endfor %}{% endif %}
+
+{% if puertos_ent or puertos_sal %}
+<section class="slide" data-title="Puertos no comunes" data-notes="{{ t.puertos }}">
+  {{ cab('Eventos de interés', 'Puertos no comunes', []) }}
+  <div class="cuerpo"><div class="g dos" style="grid-template-rows:1fr auto">{% for titulo, datos, col in [('Entrantes', puertos_ent, 'e'), ('Salientes', puertos_sal, 's2')] %}<div class="tj" data-a style="--d:{{ loop.index + 1 }}"><h3>{{ ico('server') }}{{ titulo }}<small>top {{ datos|length }}</small></h3>{% if datos %}{% set mxq = [datos | map(attribute='total') | max, 1] | max %}<table class="tbl"><thead><tr><th>Puerto</th><th>Servicio</th><th class="n">Eventos</th></tr></thead><tbody>{% for x in datos %}<tr><td class="s">{{ x.puerto }}</td><td>{{ x.servicio }}</td><td class="n" style="width:260px"><b style="color:var(--text)">{{ n(x.total) }}</b><div class="mini"><span class="gw {{ col }}" style="--w:{{ [x.total / mxq * 100, 1] | max | round(2) }}%"><i style="width:100%"></i></span></div></td></tr>{% endfor %}</tbody></table>{% else %}<p>Sin puertos no comunes en el periodo.</p>{% endif %}</div>{% endfor %}<div class="nota" style="grid-column:1/-1">{{ t.puertos }}</div></div></div>
+</section>
+{% endif %}
+
+{% if ips %}
+<section class="slide" data-title="Ataques bloqueados por el IPS" data-notes="{{ t.ips }}">
+  {{ cab('Eventos de interés', 'Ataques vistos por el IPS', [('Bloqueados (top)', n(ips | sum(attribute='total')))]) }}
+  <div class="cuerpo"><div class="g" style="grid-template-columns:1.35fr 1fr"><div class="tj" data-a style="--d:2"><h3>{{ ico('shield') }}Bloqueados<small>top {{ ips | length }}</small></h3><div class="hb" style="--et:56%;flex:1;align-content:space-evenly">{% set mxi = [ips | map(attribute='total') | max, 1] | max %}{% for x in ips %}<div><span class="t">{{ x.ataque }}</span><u class="s2"><span style="--w:{{ [x.total / mxi * 100, 1] | max | round(2) }}%"><i></i></span></u><b>{{ n(x.total) }}</b></div>{% endfor %}</div></div>
+    <div class="filas" style="grid-template-rows:{{ 'auto 1fr' if ips_permitidos else '1fr' }}">{% if ips_permitidos %}<div class="tj" data-a style="--d:3"><h3>{{ ico('warn') }}Detectados sin bloqueo<small>revisar la política</small></h3>{{ hb(ips_permitidos, 'ataque', '60%', max=6, gap='14px') }}</div>{% endif %}<div class="tj gris" data-a style="--d:4"><h3>{{ ico('chat') }}Análisis</h3><div class="story" data-fit>{{ parrafos(t.ips) }}</div></div></div></div></div>
+</section>
+{% endif %}
+
+{% for grupo in boletines | batch(2) %}
+<section class="slide" data-title="Boletines de inteligencia" data-sec="{{ num.boletines }}">
+  {{ cab('Inteligencia de amenazas', 'Boletines del periodo', [('Enviados', n(informe.boletines_enviados or boletines | length))]) }}
+  <div class="cuerpo"><div class="bols{% if grupo|length == 1 %} uno{% endif %}">{% for b in grupo %}<div class="bol{% if b.vertical %} vert{% endif %}" tabindex="0" role="button" data-resumen="{{ b.resumen or '' }}" data-a style="--d:{{ loop.index + 1 }}">{% if b.imagen %}<div class="img"><img src="{{ b.imagen }}" alt=""></div>{% else %}<div class="img sin"><svg class="i"><use href="#i-shield"/></svg></div>{% endif %}<div class="tx"><h3>{{ b.nombre }}</h3>{% if b.tipo or b.fecha %}<span class="pill r">{{ [b.tipo, b.fecha_txt] | select | join(' · ') }}</span>{% endif %}<div class="story" data-fit>{{ parrafos((b.resumen or '') | truncate(1400, False, '…')) }}</div></div></div>{% endfor %}</div></div>
+</section>
+{% endfor %}
+
+{% for cols in act_paginas %}
+<section class="slide" data-title="Actividades y pendientes">
+  {{ cab('Actividades en ejecución', 'Pendientes', [('Actividades', act.total), ('Completadas', act.completas ~ ' de ' ~ act.total)]) }}
+  <div class="cuerpo"><div class="g lat"><div class="acts">{% for col in cols %}<div>{% for f in col %}<div class="actv {{ 'av-t' if f.avance >= 100 else 'av-m' if f.avance > 0 else 'av-0' }}" data-a style="--d:{{ loop.index + 1 }}"><h3>{{ ico('bolt' if loop.index % 2 else 'check') }}<span>{{ f.nombre }}{% if f['sigue'] %} (cont.){% endif %}<small>{{ f.listas }} de {{ f['items'] | length }} completadas</small></span><b>{{ f.avance }} %</b></h3>{% for a in f['items'] %}<div class="li {{ 'av-t' if a.avance >= 100 else 'av-m' if a.avance > 0 else 'av-0' }}"><div><span>{{ a.actividad }}{% if a.compromiso_txt %} · {{ a.compromiso_txt }}{% endif %}</span><em>{{ cliente.codigo if a.responsable == 'CLIENTE' else a.quien }}</em><b>{{ a.avance }} %</b></div><u><i style="--w:{{ a.avance }}%"></i></u></div>{% endfor %}</div>{% endfor %}</div>{% endfor %}</div>
+  {% call lado('Resumen de pendientes') %}<div style="display:grid;place-items:center">{{ anillo(act.avance / 100, act.avance ~ ' %', 'avance global', '#ff5c83') }}</div><div class="trio"><div style="--k:#5fe0a8"><b>{{ act.completas }}</b><span>Completadas</span></div><div style="--k:#ffb35c"><b>{{ act.curso }}</b><span>En curso</span></div><div style="--k:#ff8aa6"><b>{{ act.pendientes }}</b><span>Pendientes</span></div></div><h4>Por responsable</h4>{% set mr = [act.por_responsable | map('last') | max, 1] | max %}{% for q, v in act.por_responsable %}<div class="resp"><span>{{ cliente.codigo if q == 'Cliente' else q }}</span><u><i style="--w:{{ (v / mr * 100) | round }}%"></i></u><b>{{ v }}</b></div>{% endfor %}{% endcall %}</div></div>
+</section>
+{% endfor %}
+
+<section class="slide" data-title="Recomendaciones" data-sec="{{ num.recomendaciones }}">
+  {{ cab('Recomendaciones', 'Qué hacer a continuación', []) }}
+  <div class="cuerpo"><div class="next" data-fit style="font-size:20px">{% for r in recomendaciones[:8] %}<div data-a style="--d:{{ loop.index + 1 }}"><b>{{ '%02d' % loop.index }}</b><span>{{ r }}</span></div>{% endfor %}</div></div>
+</section>
+
+{% for s, sv in serv.items() %}{% for grupo in ex[s].anexo %}
+<section class="slide" data-title="Anexo · eventos {{ s }} ({{ loop.index }})">
+  {{ cab('Anexo', 'Detalle de eventos ' ~ s, [('Página', loop.index ~ ' de ' ~ loop.length)]) }}
+  <div class="cuerpo"><div class="tj" style="padding:18px 22px"><table class="tbl den"><thead><tr><th>Número</th><th>Fecha</th><th>Alerta</th><th>Criticidad</th><th>Táctica</th><th>Estado</th><th>Ticket</th></tr></thead><tbody>{% for e in grupo %}<tr><td class="s">{{ e.numero }}</td><td>{{ e.fecha }}</td><td>{{ e.alerta | truncate(82, True, '…') }}</td><td>{% if e.criticidad %}<span class="tag k-{{ e.criticidad }}">{{ e.criticidad }}</span>{% endif %}</td><td style="white-space:nowrap">{{ e.tactica or '–' }}</td><td style="white-space:nowrap">{{ estados[e.estado] }}</td><td>{{ e.glpi or '–' }}</td></tr>{% endfor %}</tbody></table>{% if loop.last and ex[s].det.casos_total > 400 %}<div class="pie">Se listan 400 de {{ n(ex[s].det.casos_total) }} eventos.</div>{% endif %}</div></div>
+</section>
+{% endfor %}{% endfor %}
+
+<section class="slide fin" data-title="Gracias">{{ circulo() }}<div class="izq"><h1 data-a><em>Gracias</em></h1><p data-a style="--d:1">Sus aliados estratégicos en la<br><b>protección contra amenazas digitales</b><br>de última generación.</p><div class="dat" data-a style="--d:2">soc@wexler.com.co<br>wexler.com.co</div></div></section>
+</div></div>
+
+<div id="controls">
+  {% if informe_id %}<button id="b-pdf" title="Exportar a PDF"><svg class="i"><use href="#i-pdf"/></svg></button>{% endif %}
+  <button id="b-notes" title="Notas del presentador (N)"><svg class="i"><use href="#i-note"/></svg></button><button id="b-index" title="Índice (I)"><svg class="i"><use href="#i-list"/></svg></button>
+  <button id="b-full" title="Pantalla completa (F)"><svg class="i"><use href="#i-full"/></svg></button><button id="b-prev" title="Anterior (←)"><svg class="i"><use href="#i-left"/></svg></button><button id="b-next" title="Siguiente (→)"><svg class="i"><use href="#i-right"/></svg></button>
+</div>
+<div id="index"><h4>Índice</h4><ol id="index-list"></ol></div>
+<div id="notes"><b>Notas del presentador</b><div id="notes-text"></div></div>
+<div id="tip"></div><div id="luz"></div>
+<script type="application/json" id="datos">{{ datos | tojson }}</script>
+<script>{{ rec.js }}</script>
+</body>
+</html>

@@ -363,6 +363,8 @@ class Informe(Base):
     archivos: Mapped[list] = mapped_column(JSONB, default=list)       # archivos cargados (nombre, tipos, fecha)
     boletines: Mapped[list] = mapped_column(JSONB, default=list)      # boletines de inteligencia del periodo
     textos: Mapped[dict] = mapped_column(JSONB, default=dict)         # textos editables del informe
+    # Tablero de actividades: [{frente, actividad, responsable WX|CLIENTE|AMBOS, avance 0-100, compromiso}]
+    actividades: Mapped[list] = mapped_column(JSONB, default=list, server_default="[]")
     metricas: Mapped[dict | None] = mapped_column(JSONB)              # foto de las métricas al marcarlo FINAL
     creado_por: Mapped[str] = mapped_column(String(120))
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

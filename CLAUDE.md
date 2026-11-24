@@ -11,7 +11,7 @@ Docker Compose: `db` (PostgreSQL 16), `api` (FastAPI, SQLAlchemy 2, Alembic, Pyt
 - `importacion.py` (bitácora Excel; `Cronologia` deduce fechas que cruzan la medianoche), `correo.py` + `notificacion.py` (borrador `.eml` y plantilla de alerta), `adjuntos.py` e `imagenes.py` (validación de archivos), `auditoria.py` (registro de cambios), `glpi.py`, `configuracion.py` (parámetros de pantalla sobre `settings`, cifrado y destinos permitidos), `avisos.py` (cola y envío SMTP interno). `routers/externo.py`: consulta de solo lectura con clave.
 - `informes/`: `anexos` (CSV/Excel de FortiSIEM), `metricas`, `textos`, `contenido`, `word` (python-docx sobre la plantilla corporativa), `presentacion_html` + `plantillas/presentacion.{html,css,js}`, `mapa` (coordenadas de países), `convertidor`.
 - `frontend/src`: `pages/`, `components/` (`Ui`, `Adjuntos`, `Imagen`, `Layout`), `auth.jsx` (`puede("permiso")`), `util.js`.
-- Esquema: `backend/migraciones/versions` (última **0011**). La API aplica sola las migraciones al iniciar. Al crear una, subir también el número que espera `instalar.sh`.
+- Esquema: `backend/migraciones/versions` (última **0012**). La API aplica sola las migraciones al iniciar. Al crear una, subir también el número que espera `instalar.sh`.
 
 ## Reglas que no se deben romper
 - **Toda cifra de casos filtra por `VIGENTE`** (`models.py`): los anulados no cuentan en inicio, tablero ni informes.
@@ -32,8 +32,8 @@ Docker Compose: `db` (PostgreSQL 16), `api` (FastAPI, SQLAlchemy 2, Alembic, Pyt
 ## Roles
 N1 crea y ve todos los casos (edita los suyos). N2 y N3 revisan después (no bloquea ni cambia el SLA), hoy con permisos idénticos por decisión del usuario. Líder SOC administra, sin tocar administradores. CISO solo consulta (sin base de conocimiento). Admin todo.
 
-## Presentación
-HTML único de 1920×1080 con fuentes, fotos e imágenes incrustadas, mismo estilo que la presentación de vulnerabilidades de Wexler. `pdf=True` pone la clase `pdf` (todo en estado final) y `window.__listo` avisa que se puede imprimir. El fondo del mapa se carga de Internet (NASA GIBS); **debe funcionar sin conexión**, también el PDF. El logo y las imágenes de boletines no salen en el Word.
+## Presentaciones
+Dos estilos con el mismo motor (`presentacion.js`): **interactiva** (`presentacion.html/css`, oscura) y **ejecutiva** (`ejecutiva.html/css` sobre la anterior, clara, para enviar en PDF; contenido extra en `ejecutivo.py` y `metricas._detalle`, que se congela con el informe final). Los tiempos y el SLA van ocultos en la ejecutiva, el Word y su PDF por decisión del usuario (`mostrar_tiempos`, que se congela en `metricas` con el informe final). En el PDF no usar degradados en el texto (dejan líneas). HTML único de 1920×1080 con fuentes, fotos e imágenes incrustadas, mismo estilo que la presentación de vulnerabilidades de Wexler. `pdf=True` pone la clase `pdf` (todo en estado final) y `window.__listo` avisa que se puede imprimir. El fondo del mapa se carga de Internet (NASA GIBS); **debe funcionar sin conexión**, también el PDF. El logo y las imágenes de boletines no salen en el Word.
 
 ## Detalles que ya costaron tiempo
 - `deferred` en columnas: usar `mapped_column(..., deferred=True)`; si no, se pierde el NOT NULL. Comprobar siempre `alembic check`.

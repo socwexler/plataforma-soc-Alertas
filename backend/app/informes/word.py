@@ -373,7 +373,7 @@ def _escribir(ctx: dict, paginas: dict | None) -> tuple[bytes, list]:
             + [["Total"] + [n(p["total"]) for p in d["periodos"]]]
         w.tabla(filas, [2.0] + [1.5] * 3, f"Eventos de {s} por criticidad", numericas=(1, 2, 3), negrita_ultima=True)
         w.parrafos(t[f"retro_{s}"])
-        if t.get(f"tiempos_{s}"):
+        if ctx["tiempos_word"] and t.get(f"tiempos_{s}"):
             w.parrafos(t[f"tiempos_{s}"])
 
         w.titulo(2, "Alertas del periodo")

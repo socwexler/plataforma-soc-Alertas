@@ -228,3 +228,7 @@ tr.anulado td { color: var(--tenue); }
 .boletin-img img { max-width: 220px; max-height: 130px; border-radius: 6px; border: 1px solid var(--borde); object-fit: contain; background: #f3f5f8; }
 .volver-pres { position: fixed; top: 10px; left: 10px; z-index: 20; padding: 5px 12px; border-radius: 8px; font-size: 13px; color: #fff; background: rgba(255, 255, 255, .1); text-decoration: none; opacity: .35; transition: opacity .25s; }
 .volver-pres:hover, .volver-pres:focus-visible { opacity: 1; }
+
+/* ---------- actividades del informe ---------- */
+.fila-act { display: grid; grid-template-columns: 1.1fr 2.4fr .8fr .6fr .9fr auto; gap: 8px; align-items: center; padding: 8px 0; border-top: 1px solid var(--borde); }
+@media (max-width: 900px) { .fila-act { grid-template-columns: 1fr 1fr; } }

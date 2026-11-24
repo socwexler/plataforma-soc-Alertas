@@ -1,5 +1,6 @@
 // Requiere e2e.mjs antes (informes de los dos clientes de control en borrador)
 import fs from "fs";
+import { execFileSync } from "child_process";
 import CT from "./control.mjs";
 const [X1, X2] = CT.clientes, T1 = X1.totales.join("/"), T2 = X2.totales.join("/"), menos = (t) => [...t.slice(0, 2), t[2] - 1].join("/"), N1 = X1.totales[2];
 const [puerto, env, S, SAL] = process.argv.slice(2); const B = `http://127.0.0.1:${puerto}/api`;
@@ -47,6 +48,29 @@ ver("sin datos de sesión dentro", !t.includes(A.slice(0, 30)));
 [st, html, hd] = await raw(T.CISO, I + "/presentacion?descargar=true"); t = html.toString(); ver("HTML descargable", st === 200 && /attachment; filename="Presentacion_.*\.html"/.test(hd.get("content-disposition")) && !t.includes('id="b-pdf"'), hd.get("content-disposition"));
 ver("N1 no la ve", (await raw(T.N1, I + "/presentacion"))[0] === 403);
 const t0 = Date.now(); [st, b] = await raw(A, I + "/presentacion.pdf"); ver("PDF", st === 200 && b.subarray(0, 4).toString() === "%PDF" && b.length > 400000, [st, b.length]); console.log("   PDF", (b.length / 1e6).toFixed(1), "MB", ((Date.now() - t0) / 1000).toFixed(1), "s"); fs.writeFileSync(SAL + "/presentacion.pdf", b);
+// ---------- presentación ejecutiva
+const E = I + "/presentacion?estilo=ejecutiva"; const salvar = (x) => j(T.N2, I, "PUT", { boletines: bol, textos: {}, ...x });
+const act = [{ frente: "SIEM", actividad: "Integrar <b>firewall</b>", responsable: "CLIENTE", avance: 40, compromiso: "2026-12-10" }, { frente: "SIEM", actividad: "Terminada", responsable: "WX", avance: 100 }, { frente: "Casos de uso", actividad: "Sin iniciar", responsable: "AMBOS", avance: 0, compromiso: null }];
+for (const [d, x] of [["avance 101", { avance: 101 }], ["avance negativo", { avance: -1 }], ["responsable", { responsable: "OTRO" }], ["sin actividad", { actividad: "" }]]) ver("actividad rechaza " + d, (await salvar({ actividades: [{ ...act[0], ...x }] }))[0] === 422);
+[s, r] = await salvar({ actividades: act }); ver("guarda actividades", s === 200 && r.actividades.length === 3, r); [s, r] = await salvar({}); ver("guardar sin actividades las conserva", r.actividades.length === 3);
+ver("estilo inválido", (await raw(A, I + "/presentacion?estilo=otro"))[0] === 422); ver("N1 no ve la ejecutiva", (await raw(T.N1, E))[0] === 403 && (await raw(T.N1, I + "/presentacion.pdf?estilo=ejecutiva"))[0] === 403);
+[st, html] = await raw(T.CISO, E); t = html.toString(); ver("CISO ve la ejecutiva", st === 200 && t.includes("Informe ejecutivo") && t.includes("--cli") && t.includes('id="b-pdf"'));
+const met = (await j(A, I))[1].metricas.servicios.SOC, de = met.detalle, tot = met.periodos[2].total; ver("detalle cuadra con el total", tot === X1.totales[2] && de.por_dia.reduce((a, x) => a + x.total, 0) === tot && de.por_semana.reduce((a, b) => a + b, 0) === tot && de.casos.length === tot && de.casos_total === tot && de.tiempos.reduce((a, x) => a + x.total, 0) === met.periodos[2].con_tiempo, [tot, de.casos.length]);
+ver("pendientes cuadran", de.sin_respuesta.length === Math.min(60, met.periodos[2].sin_retro)); ver("tiempos cuadran con el objetivo", de.tiempos.slice(0, 3).reduce((a, x) => a + x.total, 0) === met.periodos[2].dentro_sla, [de.tiempos, met.periodos[2].dentro_sla]);
+const anexo = t.slice(t.indexOf("Detalle de eventos SOC")); ver("anexo con todos los eventos", de.casos.every(x => anexo.includes(`>${x.numero}<`)));
+ver("escapa actividades", !t.includes("<b>firewall</b>") && t.includes("&lt;b&gt;firewall")); ver("avance y responsables", t.includes("47 %") && t.includes("1 de 3") && t.includes(">" + X1.codigo + "<"), t.match(/avance global/g));
+ver("sin recursos externos", [...t.matchAll(/(?:src|href)="(https?:[^"]+)"/g)].length === 0);
+[st, html, hd] = await raw(A, E + "&descargar=true"); ver("HTML ejecutivo", /Informe_ejecutivo_.*\.html/.test(hd.get("content-disposition")) && !html.toString().includes('id="b-pdf"'), hd.get("content-disposition"));
+[st, b, hd] = await raw(A, I + "/presentacion.pdf?estilo=ejecutiva"); ver("PDF ejecutivo", st === 200 && b.subarray(0, 4).toString() === "%PDF" && /Informe_ejecutivo_/.test(hd.get("content-disposition")), [st, b.length]); console.log("   PDF ejecutivo", (b.length / 1e6).toFixed(1), "MB");
+const docx = async () => execFileSync("docker", ["exec", "-i", "soc-prueba-api-1", "python", "-c", "import sys,io,docx;d=docx.Document(io.BytesIO(sys.stdin.buffer.read()));sys.stdout.buffer.write('\\n'.join(p.text for p in d.paragraphs).encode())"], { input: (await raw(A, I + "/docx"))[1], maxBuffer: 1e8 }).toString(); const TX = "tiempo mediano entre";
+let w = await docx(); ver("Word sin tiempos por defecto", w.length > 2000 && !w.includes(TX) && !/dentro del objetivo/.test(w)); ver("el texto se conserva en el informe", (await j(A, I))[1].textos.tiempos_SOC.includes(TX));
+ver("tiempos ocultos por defecto", !t.includes("Tiempo de notificación") && !t.includes(">en objetivo<")); await salvar({ textos: { gestion: "Notificación SOC: mediana de 1 minutos\nOtra" } }); t = (await raw(A, E))[1].toString(); ver("filtra la línea de tiempos", !t.includes("mediana de 1 minutos") && t.includes("<li>Otra</li>"));
+await j(A, "/config/general", "PUT", { valores: { mostrar_tiempos: true } }); await j(A, I + "/textos/regenerar", "POST", { claves: ["gestion"] }); t = (await raw(A, E))[1].toString(); ver("se pueden activar", t.includes("Tiempo de notificación") && t.includes("dentro del objetivo")); ver("Word con tiempos al activar", (await docx()).includes(TX));
+await j(A, I + "/estado", "POST", { estado: "FINAL" }); await j(A, "/config/general/restablecer", "POST"); ver("final conserva lo que tenía", (await docx()).includes(TX) && (await raw(A, E))[1].toString().includes("Tiempo de notificación"));
+await j(A, I + "/estado", "POST", { estado: "BORRADOR" }); ver("al volver a borrador se ocultan", !(await docx()).includes(TX)); await j(A, I + "/estado", "POST", { estado: "FINAL" }); await j(A, "/config/general", "PUT", { valores: { mostrar_tiempos: true } }); ver("final oculto no los muestra después", !(await docx()).includes(TX));
+await j(A, I + "/estado", "POST", { estado: "BORRADOR" });
+const tt = (await j(A, I))[1].textos; ver("gestión automática", tt.gestion.includes("eventos escalados")); await salvar({ textos: { tiempos_SOC: "", gestion: "Solo esta línea" } }); t = (await raw(A, E))[1].toString(); ver("sin texto no muestra tiempos; gestión editable", !t.includes("Tiempo de notificación") && t.includes("<li>Solo esta línea</li>")); await salvar({ textos: { tiempos_SOC: tt.tiempos_SOC, gestion: tt.gestion } }); await j(A, "/config/general/restablecer", "POST");
+const [sn, sig] = await j(A, "/informes", "POST", { cliente_id: ca.id, anio: X1.mes === 12 ? X1.anio + 1 : X1.anio, mes: X1.mes % 12 + 1 }); ver("pasan las actividades sin terminar", sn === 201 && sig.actividades.length === 2 && !sig.actividades.some(x => x.avance === 100), sig?.actividades); await j(A, `/informes/${sig.id}`, "DELETE");
 // ---------- limpieza y final
 [s] = await guardar(A, [{ ...bol[0] }]); ver("borra las imágenes que ya no se usan", s === 200 && (await raw(A, `${I}/imagenes/${hh.id}`))[0] === 404 && (await raw(A, `${I}/imagenes/${v.id}`))[0] === 200);
 [s, r] = await guardar(A, bol); ver("imagen borrada avisa", s === 422 && r.detail.includes("de nuevo"), r);

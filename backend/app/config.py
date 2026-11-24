@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     adjunto_max_mb: int = 15                             # por archivo
     adjuntos_caso_max_mb: int = 60                       # por caso
     mapa_activo: bool = True
+    mostrar_tiempos: bool = False                        # tiempos de notificación y SLA en la ejecutiva, el Word y su PDF
     url_plataforma: str | None = None                    # para los enlaces de los avisos
 
     # Avisos internos por correo (se administran en Configuración)

@@ -21,7 +21,7 @@ let s, r;
 // ---------- permisos
 for (const x of ["N1", "N2", "N3", "CISO"]) for (const [u, m, d] of [["/config", "GET"], ["/config/general", "PUT", { valores: { sla_minutos: 5 } }], ["/config/glpi/restablecer", "POST"], ["/config/conexiones", "GET"], ["/config/conexiones", "POST", {}], ["/config/claves", "GET"], ["/config/claves", "POST", {}], ["/config/avisos", "GET"], ["/config/sistema", "GET"], ["/config/avisos/probar", "POST", { para: "x" }], ["/config/fortisiem/probar", "POST"], ["/glpi/probar", "POST"]]) ver(`${x} no ${m} ${u}`, (await j(T[x], u, m, d))[0] === 403);
 ver("sin sesión", (await fetch(B + "/config")).status === 401);
-[s, r] = await j(T.LIDER, "/config/sistema"); ver("estado del sistema", s === 200 && r.esquema === "0011" && r.convertidor === true && r.casos > 0, r);
+[s, r] = await j(T.LIDER, "/config/sistema"); ver("estado del sistema", s === 200 && r.esquema >= "0011" && r.convertidor === true && r.casos > 0, r);
 // ---------- general
 const sla0 = (await val("sla_minutos")).valor;
 [s, r] = await put("general", { sla_minutos: 45, jwt_horas: 8 }); ver("guarda", s === 200 && (await val("sla_minutos")).valor === 45 && (await val("sla_minutos")).origen === "pantalla", r);

@@ -40,6 +40,7 @@ GRUPOS: dict[str, dict] = {
         C("url_plataforma", "Dirección de la plataforma", "url", opcional=True, ayuda="Para los enlaces de los avisos, por ejemplo http://10.0.0.1:8080"),
         C("adjunto_max_mb", "Máximo por archivo (MB)", "entero", min=1, max=60),
         C("adjuntos_caso_max_mb", "Máximo de archivos por caso (MB)", "entero", min=1, max=500),
+        C("mostrar_tiempos", "Mostrar tiempos de notificación y SLA en los informes", "si_no", ayuda="Presentación ejecutiva, Word y PDF. Los informes finales conservan lo que tenían"),
         C("mapa_activo", "Fondo del mapa en la presentación (requiere Internet)", "si_no"),
     ]},
     "correo_cliente": {"titulo": "Correo al cliente", "campos": [

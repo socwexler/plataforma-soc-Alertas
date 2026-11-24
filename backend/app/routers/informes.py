@@ -1,6 +1,7 @@
 """Informes mensuales por cliente: datos, anexos de FortiSIEM, textos y descarga en PDF/PPTX."""
 import re
 from datetime import date, datetime
+from typing import Literal
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
@@ -58,7 +59,7 @@ def _detalle(db: Session, inf: Informe) -> dict:
     return {
         **_resumen(inf),
         "eps_promedio": inf.eps_promedio, "fuentes_integradas": inf.fuentes_integradas,
-        "boletines_enviados": inf.boletines_enviados, "boletines": inf.boletines or [],
+        "boletines_enviados": inf.boletines_enviados, "boletines": inf.boletines or [], "actividades": inf.actividades or [],
         "textos": inf.textos or {}, "claves_textos": CLAVES, "archivos": inf.archivos or [],
         "anexos_resumen": {k: ax.resumen({"tipo": k, "datos": v}) for k, v in an.items()
                            if v and k in ("paises_entrantes", "paises_salientes", "puertos", "ips", "fuentes", "fuentes_noc", "eps")},
@@ -130,6 +131,8 @@ def crear(datos: NuevoInforme, db: Session = Depends(get_db), yo: Usuario = Depe
             anexos["eps_historico"] = hist[-3:]
     inf = Informe(cliente_id=cl.id, periodo_inicio=ini, periodo_fin=fin, anexos=anexos, archivos=[], boletines=[],
                   textos={}, creado_por=yo.nombre,
+                  # las actividades sin terminar pasan al informe siguiente
+                  actividades=[a for a in (anterior.actividades or []) if a.get("avance", 0) < 100] if anterior else [],
                   fuentes_integradas=anterior.fuentes_integradas if anterior else None)
     db.add(inf)
     db.flush()
@@ -153,11 +156,20 @@ class Boletin(BaseModel):
     imagen_id: int | None = None
 
 
+class Actividad(BaseModel):
+    frente: str = Field(min_length=2, max_length=80)
+    actividad: str = Field(min_length=3, max_length=300)
+    responsable: Literal["WX", "CLIENTE", "AMBOS"] = "WX"
+    avance: int = Field(default=0, ge=0, le=100)
+    compromiso: str | None = Field(default=None, max_length=10)
+
+
 class EdicionInforme(BaseModel):
     eps_promedio: float | None = Field(default=None, ge=0)
     fuentes_integradas: int | None = Field(default=None, ge=0)
     boletines_enviados: int | None = Field(default=None, ge=0)
     boletines: list[Boletin] = []
+    actividades: list[Actividad] | None = Field(default=None, max_length=80)  # None = no cambiar
     textos: dict[str, str] = {}
 
 
@@ -173,6 +185,8 @@ def editar(iid: int, datos: EdicionInforme, db: Session = Depends(get_db), _=Dep
     if usadas - propias:
         raise HTTPException(422, "La imagen de un boletín ya no existe; cárguela de nuevo")
     inf.boletines = [b.model_dump() for b in datos.boletines]
+    if datos.actividades is not None:
+        inf.actividades = [a.model_dump() for a in datos.actividades]
     inf.imagenes = [x for x in inf.imagenes if x.id in usadas]  # se borran las que ya no usa ningún boletín
     inf.textos = {**(inf.textos or {}), **{k: v for k, v in datos.textos.items() if k in CLAVES}}
     db.commit()
@@ -326,20 +340,20 @@ def descargar_pdf(iid: int, db: Session = Depends(get_db), _=Depends(requiere("i
 
 
 @router.get("/{iid}/presentacion", response_class=HTMLResponse)
-def ver_presentacion(iid: int, descargar: bool = False, db: Session = Depends(get_db), _=Depends(requiere("informes.ver"))):
+def ver_presentacion(iid: int, descargar: bool = False, estilo: Literal["interactiva", "ejecutiva"] = "interactiva", db: Session = Depends(get_db), _=Depends(requiere("informes.ver"))):
     """Con descargar=true entrega un único archivo .html que se abre con doble clic."""
     inf = _obtener(db, iid)
-    h = presentacion_html.html(inf, _metricas(db, inf), informe_id=None if descargar else inf.id)
-    nombre = _nombre_archivo(inf, "html").replace("Informe_", "Presentacion_")
+    h = presentacion_html.html(inf, _metricas(db, inf), informe_id=None if descargar else inf.id, estilo=estilo)
+    nombre = _nombre_archivo(inf, "html").replace("Informe_", "Informe_ejecutivo_" if estilo == "ejecutiva" else "Presentacion_")
     return HTMLResponse(h, headers={"Content-Disposition": f'attachment; filename="{nombre}"'} if descargar else None)
 
 
 @router.get("/{iid}/presentacion.pdf")
-def presentacion_pdf(iid: int, db: Session = Depends(get_db), _=Depends(requiere("informes.ver"))):
+def presentacion_pdf(iid: int, estilo: Literal["interactiva", "ejecutiva"] = "interactiva", db: Session = Depends(get_db), _=Depends(requiere("informes.ver"))):
     inf = _obtener(db, iid)
     try:
-        pdf = presentacion_html.pdf(inf, _metricas(db, inf))
+        pdf = presentacion_html.pdf(inf, _metricas(db, inf), estilo)
     except ErrorConversion as e:
         raise HTTPException(503, str(e))
-    nombre = _nombre_archivo(inf, "pdf").replace("Informe_", "Presentacion_")
+    nombre = _nombre_archivo(inf, "pdf").replace("Informe_", "Informe_ejecutivo_" if estilo == "ejecutiva" else "Presentacion_")
     return _archivo(pdf, "application/pdf", nombre)

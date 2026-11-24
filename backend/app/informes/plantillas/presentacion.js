@@ -10,7 +10,7 @@
 
   // ---------- pie de página y ajuste del texto al espacio disponible
   slides.forEach((s, i) => {
-    if (s.matches('.cover,.divider,.closing')) return;
+    if (s.matches('.cover,.divider,.closing,.portada,.fin')) return;
     const f = document.createElement('div'); f.className = 'foot';
     const lab = document.createElement('span'); lab.textContent = D.pie;
     f.innerHTML = '<i class="iso"></i>'; f.append(lab);
@@ -20,7 +20,7 @@
   const ajustarTexto = () => { stage.classList.add('midiendo'); slides.forEach((s) => {
     const c = $('.cuerpo', s), ts = $$('[data-fit]', s);
     if (!c || !ts.length) return;
-    const cabe = () => c.scrollHeight <= c.clientHeight + 1 && ts.every((t) => { const p = t.closest('.tx'); return !p || p.scrollHeight <= p.clientHeight + 1; });
+    const cabe = () => c.scrollHeight <= c.clientHeight + 1 && [...ts.map((t) => t.closest('.tx')), ...$$('.lado, .tj', s)].every((p) => !p || p.scrollHeight <= p.clientHeight + 1);
     const base = ts.map((x) => parseFloat(getComputedStyle(x).fontSize));
     const poner = (f) => ts.forEach((x, i) => { x.style.fontSize = Math.max(12, base[i] * f) + 'px'; });
     let f = 1;
@@ -270,7 +270,7 @@
   if (bp) bp.onclick = async () => {
     bp.disabled = true;
     try {
-      const r = await fetch(`/api/informes/${D.informe_id}/presentacion.pdf`, { headers: { Authorization: 'Bearer ' + localStorage.getItem('soc_token') } });
+      const r = await fetch(`/api/informes/${D.informe_id}/presentacion.pdf?estilo=${D.estilo}`, { headers: { Authorization: 'Bearer ' + localStorage.getItem('soc_token') } });
       if (!r.ok) throw new Error('Error ' + r.status);
       const u = URL.createObjectURL(await r.blob()), a = document.createElement('a');
       a.href = u; a.download = D.archivo; a.click(); setTimeout(() => URL.revokeObjectURL(u), 60000);

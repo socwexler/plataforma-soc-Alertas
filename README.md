@@ -191,9 +191,19 @@ Los cuatro botones usan siempre los datos actuales del informe.
 La plantilla está en `backend/app/informes/recursos/plantilla_informe.docx`. Para cambiar el diseño, reemplace ese archivo por una nueva versión, conservando los textos "INFORME DE MONITOREO", "Revisión de actividad de cuenta", "1 de agosto de 2026", "Tabla de contenido", "Índice de tablas", "Índice de gráficas" y el título de ejemplo "Titulo", que es donde empieza el contenido.
 - **Marcar como final** (Líder SOC o Administrador) congela las cifras: aunque después se editen casos, el informe enviado no cambia. **Volver a borrador** lo desbloquea.
 
+### Presentación ejecutiva
+
+Para enviar al cliente: fondo claro, con más detalle, en PDF o HTML (panel *Presentaciones* del informe).
+
+- **Contenido:** resumen con anillo de retroalimentación y alertas principales, comparativo de tres periodos, comportamiento por día, hora y día de la semana, alertas y técnicas, MITRE, origen y dispositivos, destacados y pendientes de respuesta, fuentes y EPS, mapas, puertos, IPS, boletines, actividades, recomendaciones y anexo con todos los eventos (hasta 400).
+- **Actividades y pendientes:** se registran en el informe (frente, responsable, avance, compromiso). Las que no estén al 100 % pasan al informe siguiente.
+- **Gestión del periodo:** texto automático y editable, una línea por punto.
+- Los **tiempos de notificación y el SLA** no se muestran, salvo que se active *Configuración → General → Mostrar tiempos…* (y el informe conserve el texto *Tiempos de notificación*). Aplica a la presentación ejecutiva, al Word y a su PDF, y queda fijado al marcar el informe como final.
+- Las secciones sin datos se omiten. Un informe final congelado antes de la versión 0012 no tiene comportamiento, origen, pendientes ni anexo; vuelva a borrador para incluirlos.
+
 ### Presentación interactiva
 
-- **Ver presentación** la abre en el navegador; **Presentación HTML** descarga un solo archivo que se abre con doble clic; **Presentación PDF** la exporta con cada diapositiva en su estado final.
+- Para exponer en reunión: fondo oscuro y animada. *Ver* la abre en el navegador; *Descargar HTML* entrega un solo archivo que se abre con doble clic; *Descargar PDF* la exporta con cada diapositiva en su estado final.
 - **Teclas:** ← → avanzar, `I` índice, `N` notas del presentador (los textos del informe), `F` pantalla completa.
 - **Interacción:** clic en una criticidad para resaltarla, clic en la agenda para ir a una sección, clic en un boletín para ampliarlo, ayuda al pasar el cursor.
 - **Mapa:** ubica los países del anexo (`informes/mapa.py`), con pestañas Entrantes/Salientes, zoom y arrastre. El PDF trae un mapa por sentido. Un país sin ubicación conocida se lista al lado.

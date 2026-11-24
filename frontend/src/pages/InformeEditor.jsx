@@ -56,7 +56,7 @@ export default function InformeEditor() {
   const aplicar = useCallback((d) => {
     setInf(d);
     setF({ eps_promedio: d.eps_promedio ?? "", fuentes_integradas: d.fuentes_integradas ?? "", boletines_enviados: d.boletines_enviados ?? "",
-      boletines: d.boletines, textos: { ...d.textos } });
+      boletines: d.boletines, actividades: d.actividades, textos: { ...d.textos } });
     setSucio(false);
   }, []);
   useEffect(() => { api(`/informes/${id}`).then(aplicar).catch(setError); }, [id, aplicar]);
@@ -91,6 +91,7 @@ export default function InformeEditor() {
     fuentes_integradas: f.fuentes_integradas === "" ? null : Number(f.fuentes_integradas),
     boletines_enviados: f.boletines_enviados === "" ? null : Number(f.boletines_enviados),
     boletines: f.boletines.filter((b) => b.nombre?.trim()),
+    actividades: f.actividades.filter((a) => a.actividad?.trim()).map((a) => ({ ...a, frente: a.frente?.trim() || "General", avance: Number(a.avance) || 0, compromiso: a.compromiso || null })),
     textos: f.textos,
   });
   const guardar = () => accion("guardar", () => api(`/informes/${id}`, { metodo: "PUT", datos: datosGuardar() }), "Cambios guardados.");
@@ -135,13 +136,22 @@ export default function InformeEditor() {
             {ocupado === "docx" ? "Generando…" : "Descargar Word"}</button>
           <button className="btn primario" disabled={!!ocupado} onClick={() => accion("pdf", () => conGuardado(() => descargar(`/informes/${id}/pdf`, "informe.pdf")))}>
             {ocupado === "pdf" ? "Generando…" : "Descargar PDF"}</button>
-          <Link className="btn" to={`/informes/${id}/presentacion`} target="_blank" rel="noopener"
-                onClick={(e) => { if (sucio) { e.preventDefault(); window.alert("Guarde los cambios antes de ver la presentación."); } }}>Ver presentación</Link>
-          <button className="btn" disabled={!!ocupado} title="Un solo archivo que se abre con doble clic" onClick={() => accion("preshtml", () => conGuardado(() => descargar(`/informes/${id}/presentacion?descargar=true`, "presentacion.html")))}>
-            {ocupado === "preshtml" ? "Generando…" : "Presentación HTML"}</button>
-          <button className="btn" disabled={!!ocupado} onClick={() => accion("prespdf", () => conGuardado(() => descargar(`/informes/${id}/presentacion.pdf`, "presentacion.pdf")))}>
-            {ocupado === "prespdf" ? "Generando…" : "Presentación PDF"}</button>
         </div>
+      </div>
+      <div className="panel">
+        <h2>Presentaciones</h2>
+        <div className="grid g2">{[["ejecutiva", "Ejecutiva", "Fondo claro y con detalle, para enviar al cliente en PDF: comportamiento, pendientes, actividades y anexo de eventos.", "Informe ejecutivo"],
+          ["interactiva", "Interactiva", "Fondo oscuro y animada, para exponer en reunión.", "Presentación"]].map(([k, t, d, nom]) => (
+          <div key={k}>
+            <b>{t}</b><p className="tenue" style={{ margin: "2px 0 8px" }}>{d}</p>
+            <div className="acciones">
+              <Link className={`btn chico ${k === "ejecutiva" ? "primario" : ""}`} to={`/informes/${id}/presentacion?estilo=${k}`} target="_blank" rel="noopener"
+                    onClick={(e) => { if (sucio) { e.preventDefault(); window.alert("Guarde los cambios antes de ver la presentación."); } }}>Ver</Link>
+              <button className={`btn chico ${k === "ejecutiva" ? "primario" : ""}`} disabled={!!ocupado} onClick={() => accion(`pdf_${k}`, () => conGuardado(() => descargar(`/informes/${id}/presentacion.pdf?estilo=${k}`, `${nom}.pdf`)))}>{ocupado === `pdf_${k}` ? "Generando…" : "Descargar PDF"}</button>
+              <button className="btn chico" disabled={!!ocupado} title="Un solo archivo que se abre con doble clic" onClick={() => accion(`html_${k}`, () => conGuardado(() => descargar(`/informes/${id}/presentacion?descargar=true&estilo=${k}`, `${nom}.html`)))}>{ocupado === `html_${k}` ? "Generando…" : "Descargar HTML"}</button>
+            </div>
+          </div>
+        ))}</div>
       </div>
       {msg && <div className="alerta ok">{msg}</div>}
       <MsgError e={error} />
@@ -231,7 +241,30 @@ export default function InformeEditor() {
 
       <div className="panel">
         <div className="cabecera" style={{ marginBottom: 8 }}>
-          <div><h2 style={{ margin: 0 }}>5. Textos del informe</h2>
+          <div><h2 style={{ margin: 0 }}>5. Actividades y pendientes</h2>
+            <p className="tenue" style={{ margin: "4px 0 0" }}>Solo en la presentación ejecutiva. Las que no estén al 100 % pasan al informe siguiente.</p></div>
+          {editable && <button className="btn chico" onClick={() => cambiar("actividades", [...f.actividades, { frente: f.actividades.at(-1)?.frente || "", actividad: "", responsable: "WX", avance: 0, compromiso: "" }])}>+ Agregar actividad</button>}
+        </div>
+        {!f.actividades.length && <p className="tenue" style={{ margin: 0 }}>Sin actividades: la página se omite.</p>}
+        {f.actividades.map((a, i) => {
+          const set = (k) => (e) => cambiar("actividades", f.actividades.map((x, j) => (j === i ? { ...x, [k]: e.target.value } : x)));
+          return (
+            <div key={i} className="fila-act">
+              <input value={a.frente} disabled={!editable} onChange={set("frente")} placeholder="Frente (SIEM, SOAR…)" list="frentes" maxLength={80} />
+              <input value={a.actividad} disabled={!editable} onChange={set("actividad")} placeholder="Actividad" maxLength={300} />
+              <select value={a.responsable} disabled={!editable} onChange={set("responsable")}><option value="WX">Wexler</option><option value="CLIENTE">{inf.cliente.codigo}</option><option value="AMBOS">Ambos</option></select>
+              <select value={a.avance} disabled={!editable} onChange={set("avance")}>{[...new Set([0, 10, 25, 50, 75, 90, 100, Number(a.avance)])].sort((x, y) => x - y).map((v) => <option key={v} value={v}>{v} %</option>)}</select>
+              <input type="date" value={a.compromiso || ""} disabled={!editable} onChange={set("compromiso")} title="Fecha de compromiso" />
+              {editable && <button className="btn chico peligro" onClick={() => cambiar("actividades", f.actividades.filter((_, j) => j !== i))}>Quitar</button>}
+            </div>
+          );
+        })}
+        <datalist id="frentes">{[...new Set(f.actividades.map((a) => a.frente).filter(Boolean))].map((x) => <option key={x} value={x} />)}</datalist>
+      </div>
+
+      <div className="panel">
+        <div className="cabecera" style={{ marginBottom: 8 }}>
+          <div><h2 style={{ margin: 0 }}>6. Textos del informe</h2>
             <p className="tenue" style={{ margin: "4px 0 0" }}>Redactados automáticamente con los datos; revíselos y ajústelos antes de generar. Separe párrafos con una línea en blanco.</p></div>
           {editable && <button className="btn chico" disabled={!!ocupado} onClick={() => regenerar(null)}>Regenerar todos</button>}
         </div>
@@ -239,7 +272,7 @@ export default function InformeEditor() {
           {clavesVisibles.map(([k, etiqueta]) => (
             <Campo key={k} etiqueta={<span className="acciones" style={{ justifyContent: "space-between", width: "100%" }}>{etiqueta}
               {editable && <button type="button" className="btn fantasma chico" onClick={(e) => { e.preventDefault(); regenerar([k]); }}>Regenerar</button>}</span>}>
-              <textarea rows={k === "recomendaciones" ? 8 : 4} value={f.textos[k] || ""} disabled={!editable} onChange={(e) => cambiarTexto(k, e.target.value)}
+              <textarea rows={["recomendaciones", "gestion"].includes(k) ? 8 : 4} value={f.textos[k] || ""} disabled={!editable} onChange={(e) => cambiarTexto(k, e.target.value)}
                         placeholder="Sin texto: la parte correspondiente queda vacía." />
             </Campo>
           ))}

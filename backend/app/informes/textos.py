@@ -5,16 +5,17 @@ Los textos quedan como borrador editable: el analista los ajusta antes de genera
 
 CLAVES = {
     "objetivo": "Objetivo",
+    "gestion": "Gestión del periodo (una por línea; presentación ejecutiva)",
     "alcance": "Alcance",
     "resumen_SOC": "SOC · Resumen del trimestre",
     "retro_SOC": "SOC · Retroalimentación",
     "alertas_SOC": "SOC · Alertas del periodo",
     "categorias_SOC": "SOC · Categorías MITRE",
-    "tiempos_SOC": "SOC · Tiempos de notificación",
+    "tiempos_SOC": "SOC · Tiempos de notificación (solo si se activa en Configuración)",
     "resumen_NOC": "NOC · Resumen del trimestre",
     "retro_NOC": "NOC · Retroalimentación",
     "alertas_NOC": "NOC · Alertas del periodo",
-    "tiempos_NOC": "NOC · Tiempos de notificación",
+    "tiempos_NOC": "NOC · Tiempos de notificación (solo si se activa en Configuración)",
     "fuentes": "Fuentes integradas",
     "eps": "Promedio de EPS",
     "paises_entrantes": "Países entrantes",
@@ -152,6 +153,25 @@ def _servicio(s: str, d: dict, sla: int) -> dict:
     return t
 
 
+def _gestion(informe, m: dict) -> list[str]:
+    """Hechos del periodo para el panel lateral de la presentación ejecutiva."""
+    g, an = [], informe.anexos or {}
+    for s, d in m["servicios"].items():
+        a, b = d["periodos"][-1], d["periodos"][-2]
+        var = _variacion(b["total"], a["total"])
+        g.append(f"Monitoreo {s} 7x24: {n(a['total'])} eventos escalados" + (f"; el volumen {var}" if var else ""))
+        if a["con_tiempo"] and m.get("mostrar_tiempos"):
+            g.append(f"Notificación {s}: mediana de {n(a['mediana_minutos'])} minutos y {pct(a['dentro_sla'], a['con_tiempo'])} dentro del objetivo")
+        if a["total"]:
+            g.append(f"Retroalimentación {s}: {n(a['con_retro'])} de {n(a['total'])} eventos con respuesta")
+    ips = (an.get("ips") or {}).get("bloqueados")
+    if ips:
+        g.append(f"IPS: {n(sum(x['total'] for x in ips[:10]))} eventos bloqueados en el top 10 de ataques")
+    if informe.boletines_enviados or informe.boletines:
+        g.append(f"Inteligencia de amenazas: {n(informe.boletines_enviados or len(informe.boletines))} boletines enviados")
+    return g
+
+
 def generar(cliente, informe, m: dict) -> dict[str, str]:
     an = informe.anexos or {}
     nombre = f"{cliente.codigo} - {cliente.nombre}"
@@ -232,4 +252,5 @@ def generar(cliente, informe, m: dict) -> dict[str, str]:
             conc += f" El {pct(act['con_retro'], act['total'])} de los eventos obtuvo retroalimentación del cliente; " \
                     f"se recomienda fortalecer este canal para mejorar la afinación de los casos de uso."
         t["conclusiones"] = conc
+        t["gestion"] = "\n".join(_gestion(informe, m))
     return t
