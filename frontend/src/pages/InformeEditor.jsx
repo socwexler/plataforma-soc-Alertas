@@ -272,7 +272,7 @@ export default function InformeEditor() {
           {clavesVisibles.map(([k, etiqueta]) => (
             <Campo key={k} etiqueta={<span className="acciones" style={{ justifyContent: "space-between", width: "100%" }}>{etiqueta}
               {editable && <button type="button" className="btn fantasma chico" onClick={(e) => { e.preventDefault(); regenerar([k]); }}>Regenerar</button>}</span>}>
-              <textarea rows={["recomendaciones", "gestion"].includes(k) ? 8 : 4} value={f.textos[k] || ""} disabled={!editable} onChange={(e) => cambiarTexto(k, e.target.value)}
+              <textarea rows={k === "recomendaciones" ? 8 : 4} value={f.textos[k] || ""} disabled={!editable} onChange={(e) => cambiarTexto(k, e.target.value)}
                         placeholder="Sin texto: la parte correspondiente queda vacía." />
             </Campo>
           ))}

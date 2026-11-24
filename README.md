@@ -198,7 +198,7 @@ Para enviar al cliente: fondo claro, con más detalle, en PDF o HTML (panel *Pre
 
 - **Contenido:** resumen con anillo de retroalimentación y alertas principales, comparativo de tres periodos, comportamiento por día, hora y día de la semana, alertas y técnicas, MITRE, origen y dispositivos, destacados y pendientes de respuesta, fuentes y EPS, mapas, puertos, IPS, boletines, actividades, recomendaciones y anexo con todos los eventos (hasta 400).
 - **Actividades y pendientes:** se registran en el informe (frente, responsable, avance, compromiso). Las que no estén al 100 % pasan al informe siguiente.
-- **Gestión del periodo:** texto automático y editable, una línea por punto.
+- No lleva paneles laterales de texto: las gráficas y tablas ocupan toda la hoja. Los textos de resumen y MITRE se siguen usando en el Word y en la presentación interactiva.
 - Los **tiempos de notificación y el SLA** no se muestran, salvo que se active *Configuración → General → Mostrar tiempos…* (y el informe conserve el texto *Tiempos de notificación*). Aplica a la presentación ejecutiva, al Word y a su PDF, y queda fijado al marcar el informe como final.
 - Las secciones sin datos se omiten. Un informe final congelado antes de la versión 0012 no tiene comportamiento, origen, pendientes ni anexo; vuelva a borrador para incluirlos.
 
