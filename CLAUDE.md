@@ -11,7 +11,7 @@ Docker Compose: `db` (PostgreSQL 16), `api` (FastAPI, SQLAlchemy 2, Alembic, Pyt
 - `importacion.py` (bitácora Excel; `Cronologia` deduce fechas que cruzan la medianoche), `correo.py` + `notificacion.py` (borrador `.eml` y plantilla de alerta), `adjuntos.py` e `imagenes.py` (validación de archivos), `auditoria.py` (registro de cambios), `glpi.py`, `configuracion.py` (parámetros de pantalla sobre `settings`, cifrado y destinos permitidos), `avisos.py` (cola y envío SMTP interno). `routers/externo.py`: consulta de solo lectura con clave.
 - `informes/`: `anexos` (CSV/Excel de FortiSIEM), `metricas`, `textos`, `contenido`, `word` (python-docx sobre la plantilla corporativa), `presentacion_html` + `plantillas/presentacion.{html,css,js}`, `mapa` (coordenadas de países), `convertidor`.
 - `frontend/src`: `pages/`, `components/` (`Ui`, `Adjuntos`, `Imagen`, `Layout`), `auth.jsx` (`puede("permiso")`), `util.js`.
-- Esquema: `backend/migraciones/versions` (última **0012**). La API aplica sola las migraciones al iniciar. Al crear una, subir también el número que espera `instalar.sh`.
+- Esquema: `backend/migraciones/versions` (última **0013**). La API aplica sola las migraciones al iniciar. Al crear una, subir también el número que espera `instalar.sh`.
 
 ## Reglas que no se deben romper
 - **Toda cifra de casos filtra por `VIGENTE`** (`models.py`): los anulados no cuentan en inicio, tablero ni informes.
@@ -21,6 +21,7 @@ Docker Compose: `db` (PostgreSQL 16), `api` (FastAPI, SQLAlchemy 2, Alembic, Pyt
 - **Los casos no se eliminan: se anulan** (N2 o superior, con motivo, restaurables) y el número WX no se reutiliza. Usuarios, clientes y casos de uso solo se eliminan si no tienen historial; si lo tienen, se deshabilitan.
 - **Los informes FINAL están congelados** (`metricas`): nada los debe cambiar.
 - **El correo de alerta nunca se envía**: se descarga un `.eml` (`X-Unsent: 1`). El envío del informe por correo (Fase 4) sería una excepción que el usuario aún no ha definido: preguntar antes de implementarlo. Los destinatarios salen solo del cliente y de sus dominios; es el control para no equivocarse de cliente.
+- **Evidencias del cambio de estado** (`Adjunto.tipo = GESTION`, `POST /casos/{id}/estado`): internas, nunca van en el correo (lo impide también la base). Cualquier rol menos CISO, en cualquier caso vigente (decisión del usuario); lo demás de un caso ajeno sigue vedado al N1.
 - La importación «Reemplazar» se bloquea si hay casos importados con archivos o anulados.
 - Los permisos se validan en el servidor; el menú solo los refleja. Siempre queda un administrador; el del `.env` solo se crea si no existe ninguno.
 - Los archivos se validan por contenido, no por extensión. Sin HTML, SVG, macros ni ejecutables. No hay antivirus.

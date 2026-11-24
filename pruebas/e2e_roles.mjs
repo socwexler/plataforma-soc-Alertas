@@ -30,6 +30,7 @@ const M = [
   ["ver notificación", r => j(T[r], `/casos/${cN1.id}/notificacion`), TODOS],
   ["crear caso", r => j(T[r], "/casos", "POST", caso), ["N1", ...REV]],
   ["editar caso ajeno", r => j(T[r], "/casos/" + cN2.id, "PUT", caso), REV],
+  ["cambiar estado de caso ajeno", async r => { const fd = new FormData(); fd.append("estado", "CON_RETRO"); fd.append("archivos", new Blob(["evidencia " + r]), r + ".txt"); const x = await fetch(`${B}/casos/${cN2.id}/estado`, { method: "POST", headers: { Authorization: "Bearer " + T[r] }, body: fd }); return [x.status]; }, ["N1", ...REV]],
   ["comentar caso ajeno", r => j(T[r], `/casos/${cN2.id}/seguimientos`, "POST", { comentario: "hola" }), REV],
   ["tablero", r => j(T[r], "/tablero"), [...REV, "CISO"]],
   ["resumen de inicio", r => j(T[r], "/casos/resumen"), [...REV, "CISO"]],

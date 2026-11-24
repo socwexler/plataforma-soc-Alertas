@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
@@ -15,7 +15,7 @@ from ..notificacion import construir_notificacion
 from ..auditoria import registrar
 from ..informes.periodos import etiqueta, ultimos
 from ..models import VIGENTE, Adjunto, Caso, CasoUso, Cliente, Consecutivo, Informe, Seguimiento, Usuario
-from ..schemas import AdjuntoIn, CasoIn, CasoListaOut, CasoOut, MotivoIn, PaginaCasos, RevisionIn, SeguimientoIn, SeguimientoOut
+from ..schemas import AdjuntoIn, CasoIn, CasoListaOut, CasoOut, Estado, MotivoIn, PaginaCasos, RevisionIn, SeguimientoIn, SeguimientoOut
 from ..security import requiere, tiene, usuario_actual
 
 router = APIRouter(prefix="/api/casos", tags=["casos"])
@@ -257,6 +257,12 @@ def editar(cid: int, datos: CasoIn, db: Session = Depends(get_db), yo: Usuario =
         db.add(Seguimiento(caso_id=c.id, autor_id=yo.id, autor_nombre=yo.nombre, tipo="estado",
                            comentario=f"Estado: {ETIQUETA_ESTADO[estado_anterior]} → {ETIQUETA_ESTADO[c.estado]}"))
     db.commit()
+    _resolver_al_cerrar(db, c, yo, estado_anterior)
+    db.expire_all()
+    return db.get(Caso, cid)
+
+
+def _resolver_al_cerrar(db: Session, c: Caso, yo: Usuario, estado_anterior: str):
     if (c.estado == "CERRADO" and estado_anterior != "CERRADO" and c.glpi_ticket_id
             and settings.glpi_activo and settings.glpi_resolver_al_cerrar and (c.glpi_estado or 0) < 5):
         try:
@@ -265,6 +271,39 @@ def editar(cid: int, datos: CasoIn, db: Session = Depends(get_db), yo: Usuario =
         except glpi.ErrorGLPI as e:
             c.glpi_error = f"No se pudo resolver el ticket en GLPI: {e}"
         db.commit()
+
+
+@router.post("/{cid}/estado", response_model=CasoOut)
+def cambiar_estado(cid: int, estado: Estado = Form(), comentario: str = Form("", max_length=4000),
+                   archivos: list[UploadFile] = File([]), db: Session = Depends(get_db),
+                   yo: Usuario = Depends(requiere("casos.crear"))):
+    """Cambia el estado con su soporte (correo, imagen o documento). Cualquier analista puede hacerlo en cualquier caso
+    vigente, aunque no lo haya registrado: la respuesta del cliente puede llegar en otro turno. Con el mismo estado
+    solo agrega el soporte. Los archivos son internos: no van en el correo al cliente."""
+    c = db.get(Caso, cid, with_for_update={"of": Caso})
+    if not c:
+        raise HTTPException(404, "Caso no encontrado")
+    if c.anulado_en:
+        raise HTTPException(409, f"{c.numero} está anulado; restáurelo para modificarlo")
+    anterior, detalle = c.estado, comentario.strip()
+    nuevos = _leer_archivos(c, archivos, "GESTION", yo)
+    if estado == anterior and not nuevos:
+        raise HTTPException(422, f"El caso ya está en {ETIQUETA_ESTADO[estado]}; adjunte al menos un archivo")
+    c.estado = estado
+    texto = [f"Estado: {ETIQUETA_ESTADO[anterior]} → {ETIQUETA_ESTADO[estado]}" if estado != anterior
+             else f"Evidencia agregada (estado: {ETIQUETA_ESTADO[estado]})"]
+    if detalle:
+        texto.append(detalle)
+    if nuevos:   # queda en el historial aunque después se quite el archivo
+        texto.append("Archivos: " + ", ".join(a.nombre for a in nuevos))
+    s = Seguimiento(caso_id=c.id, autor_id=yo.id, autor_nombre=yo.nombre, tipo="estado", comentario="\n".join(texto))
+    db.add(s)
+    db.flush()
+    for a in nuevos:
+        a.seguimiento_id = s.id
+    db.add_all(nuevos)
+    db.commit()
+    _resolver_al_cerrar(db, c, yo, anterior)
     db.expire_all()
     return db.get(Caso, cid)
 
@@ -445,18 +484,15 @@ def _nota(db: Session, c: Caso, yo: Usuario, texto: str):
     db.add(Seguimiento(caso_id=c.id, autor_id=yo.id, autor_nombre=yo.nombre, tipo="adjunto", comentario=texto))
 
 
-@router.post("/{cid}/adjuntos", response_model=CasoOut, status_code=201)
-def subir_adjuntos(cid: int, archivos: list[UploadFile], tipo: str = Form("ADJUNTO"), db: Session = Depends(get_db),
-                   yo: Usuario = Depends(requiere("casos.crear"))):
-    """Todo o nada: si un archivo no es válido, no se guarda ninguno."""
-    c = _para_correo(db, cid, yo)
-    if tipo not in ("EVIDENCIA", "ADJUNTO"):
-        raise HTTPException(422, "Tipo no válido")
+def _leer_archivos(c: Caso, archivos: list[UploadFile], tipo: str, yo: Usuario) -> list[Adjunto]:
+    """Todo o nada: si un archivo no es válido, no se acepta ninguno."""
     limite, usado = settings.adjuntos_caso_max_mb * adjuntos.MB, sum(a.tamano for a in c.adjuntos)
     huellas = {(a.sha256, a.tipo) for a in c.adjuntos}
     nuevos = []
     try:
-        for f in archivos[:20]:
+        if len(archivos) > 20:
+            raise adjuntos.ErrorAdjunto("Máximo 20 archivos a la vez")
+        for f in archivos:
             d = adjuntos.validar(f.filename, f.file.read(settings.adjunto_max_mb * adjuntos.MB + 1), tipo)
             if (d["sha256"], tipo) in huellas:
                 raise adjuntos.ErrorAdjunto(f"{d['nombre']}: ese archivo ya está en el caso")
@@ -464,9 +500,19 @@ def subir_adjuntos(cid: int, archivos: list[UploadFile], tipo: str = Form("ADJUN
             if usado > limite:
                 raise adjuntos.ErrorAdjunto(f"El caso superaría {settings.adjuntos_caso_max_mb} MB en archivos")
             huellas.add((d["sha256"], tipo))
-            nuevos.append(Adjunto(caso_id=cid, incluir=True, subido_por=yo.nombre, **d))
+            nuevos.append(Adjunto(caso_id=c.id, incluir=tipo != "GESTION", subido_por=yo.nombre, **d))
     except adjuntos.ErrorAdjunto as e:
         raise HTTPException(422, str(e))
+    return nuevos
+
+
+@router.post("/{cid}/adjuntos", response_model=CasoOut, status_code=201)
+def subir_adjuntos(cid: int, archivos: list[UploadFile], tipo: str = Form("ADJUNTO"), db: Session = Depends(get_db),
+                   yo: Usuario = Depends(requiere("casos.crear"))):
+    c = _para_correo(db, cid, yo)
+    if tipo not in ("EVIDENCIA", "ADJUNTO"):
+        raise HTTPException(422, "Tipo no válido")
+    nuevos = _leer_archivos(c, archivos, tipo, yo)
     db.add_all(nuevos)
     _nota(db, c, yo, f"{'Evidencia' if tipo == 'EVIDENCIA' else 'Adjunto'}: " + ", ".join(a.nombre for a in nuevos))
     _revisar_de_nuevo(db, c, yo)
@@ -487,6 +533,8 @@ def descargar_adjunto(cid: int, aid: int, db: Session = Depends(get_db), _=Depen
 def marcar_adjunto(cid: int, aid: int, datos: AdjuntoIn, db: Session = Depends(get_db),
                    yo: Usuario = Depends(requiere("casos.crear"))):
     c, a = _para_correo(db, cid, yo), _adjunto(db, cid, aid)
+    if a.tipo == "GESTION":
+        raise HTTPException(422, "Es una evidencia de gestión: no va en el correo al cliente")
     if a.incluir != datos.incluir:
         a.incluir = datos.incluir
         _nota(db, c, yo, f"{a.nombre}: {'se incluye en' if a.incluir else 'no va en'} el correo")
@@ -500,7 +548,8 @@ def marcar_adjunto(cid: int, aid: int, datos: AdjuntoIn, db: Session = Depends(g
 def quitar_adjunto(cid: int, aid: int, db: Session = Depends(get_db), yo: Usuario = Depends(requiere("casos.crear"))):
     c, a = _para_correo(db, cid, yo), _adjunto(db, cid, aid)
     _nota(db, c, yo, f"Archivo eliminado: {a.nombre} (SHA-256 {a.sha256[:16]}…)")
-    _revisar_de_nuevo(db, c, yo)
+    if a.tipo != "GESTION":   # no es contenido de la alerta
+        _revisar_de_nuevo(db, c, yo)
     db.delete(a)
     db.commit()
     db.expire_all()

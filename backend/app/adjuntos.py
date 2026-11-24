@@ -11,6 +11,7 @@ import zipfile
 from PIL import Image, ImageOps
 
 from .config import settings
+from .correos_archivo import ErrorCorreoArchivo, adjuntos_eml, adjuntos_msg
 
 MB = 1024 * 1024
 Image.MAX_IMAGE_PIXELS = 40_000_000
@@ -22,6 +23,7 @@ TEXTO = {"txt": "text/plain", "log": "text/plain", "csv": "text/csv", "json": "a
 PELIGROSAS = re.compile(r"\.(exe|dll|scr|com|bat|cmd|ps1|psm1|vbs|vbe|js|jse|wsf|wsh|hta|msi|msp|lnk|jar|iso|img|vhdx?|reg|cpl|"
                         r"html?|svg|xll|chm|one|docm|xlsm|pptm|dotm|xlam|py|sh)$", re.I)
 PERMITIDAS = sorted([*IMAGENES, *OFFICE, *TEXTO, "pdf", "zip"])
+CORREOS = {"eml": ("message/rfc822", adjuntos_eml), "msg": ("application/vnd.ms-outlook", adjuntos_msg)}   # solo como evidencia de gestión
 
 
 class ErrorAdjunto(ValueError):
@@ -39,8 +41,9 @@ def validar(nombre: str | None, datos: bytes, tipo: str) -> dict:
     """Devuelve los campos del adjunto (nombre, mime, contenido…) o lanza ErrorAdjunto."""
     n = limpiar_nombre(nombre)
     ext = n.rpartition(".")[2].lower()
-    if not n or ext not in PERMITIDAS:
-        raise ErrorAdjunto(f"{n or 'Archivo sin nombre'}: tipo no permitido. Se aceptan: {', '.join(PERMITIDAS)}")
+    permitidas = sorted([*PERMITIDAS, *CORREOS]) if tipo == "GESTION" else PERMITIDAS
+    if not n or ext not in permitidas:
+        raise ErrorAdjunto(f"{n or 'Archivo sin nombre'}: tipo no permitido. Se aceptan: {', '.join(permitidas)}")
     if not datos:
         raise ErrorAdjunto(f"{n}: el archivo está vacío")
     if len(datos) > settings.adjunto_max_mb * MB:
@@ -68,6 +71,14 @@ def validar(nombre: str | None, datos: bytes, tipo: str) -> dict:
             raise ErrorAdjunto(f"{n}: no es una imagen válida") from e
     elif tipo == "EVIDENCIA":
         raise ErrorAdjunto(f"{n}: las evidencias deben ser imágenes PNG o JPG; súbalo como adjunto")
+    elif ext in CORREOS:
+        mime, nombres_de = CORREOS[ext]
+        try:
+            malo = next((x for x in nombres_de(datos) if PELIGROSAS.search(x)), None)
+        except ErrorCorreoArchivo as e:
+            raise ErrorAdjunto(f"{n}: {e}") from e
+        if malo:
+            raise ErrorAdjunto(f"{n}: el correo trae un archivo no permitido ({malo[:60]}). Guárdelo sin ese archivo o imprímalo en PDF")
     elif ext == "pdf":
         mime = "application/pdf"
         if not datos[:1024].lstrip().startswith(b"%PDF-"):

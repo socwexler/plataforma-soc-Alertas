@@ -40,6 +40,7 @@ prueba e2e_pres "$(w "$P")" "$(w "$D/sal")"        # logos, boletines y presenta
 prueba e2e_anular "$(w "$D/b.xlsx")"
 prueba e2e_baja
 prueba e2e_adj "$(w "$P")" "$(w "$D/sal")"
+prueba e2e_estado "$(w "$P")"
 prueba e2e_roles
 prueba e2e_correo "$(w "$D/sal")"
 # simuladores de GLPI, FortiSIEM y correo en la red de la copia; no salen a Internet

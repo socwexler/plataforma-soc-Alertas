@@ -219,9 +219,11 @@ class Seguimiento(Base):
 
 
 class Adjunto(Base):
-    """Archivos del caso. EVIDENCIA: imagen que sale en el recuadro del correo; ADJUNTO: archivo pegado al correo."""
+    """Archivos del caso. EVIDENCIA: imagen del recuadro de la plantilla; ADJUNTO: archivo pegado al correo;
+    GESTION: soporte de un cambio de estado (respuesta del cliente…), uso interno: nunca va en el correo."""
     __tablename__ = "adjuntos"
-    __table_args__ = (CheckConstraint("tipo IN ('EVIDENCIA', 'ADJUNTO')", name="ck_adjunto_tipo"),)
+    __table_args__ = (CheckConstraint("tipo IN ('EVIDENCIA', 'ADJUNTO', 'GESTION')", name="ck_adjunto_tipo"),
+                      CheckConstraint("tipo <> 'GESTION' OR NOT incluir", name="ck_adjunto_gestion"))
 
     id: Mapped[int] = mapped_column(primary_key=True)
     caso_id: Mapped[int] = mapped_column(ForeignKey("casos.id", ondelete="CASCADE"), index=True)
@@ -232,6 +234,7 @@ class Adjunto(Base):
     sha256: Mapped[str] = mapped_column(String(64))
     ancho: Mapped[int | None] = mapped_column(Integer)
     incluir: Mapped[bool] = mapped_column(Boolean, default=True)     # va en el correo al cliente
+    seguimiento_id: Mapped[int | None] = mapped_column(ForeignKey("seguimientos.id", ondelete="SET NULL", name="fk_adjunto_seguimiento"))
     contenido: Mapped[bytes] = mapped_column(LargeBinary, deferred=True)  # no se carga al listar
     subido_por: Mapped[str] = mapped_column(String(120))
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

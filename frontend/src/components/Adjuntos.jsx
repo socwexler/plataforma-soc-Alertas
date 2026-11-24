@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { api, token } from "../api";
 
 export const TIPOS = ".png,.jpg,.jpeg,.pdf,.docx,.xlsx,.pptx,.txt,.log,.csv,.json,.zip";
+export const TIPOS_GESTION = `.eml,.msg,${TIPOS}`;
 export const peso = (b) => (b >= 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`);
 
 export async function subirAdjuntos(casoId, archivos, tipo) {
@@ -21,10 +22,28 @@ export function imagenesPegadas(e) {
   return imgs.map((f, i) => new File([f], `captura_${sello}${i ? `_${i}` : ""}.${f.type === "image/png" ? "png" : "jpg"}`, { type: f.type }));
 }
 
+/** Cambia el estado (o solo agrega soporte, con el mismo estado). archivos: correos, imágenes o documentos. */
+export async function enviarEstado(casoId, estado, comentario, archivos) {
+  const fd = new FormData();
+  fd.append("estado", estado);
+  fd.append("comentario", comentario);
+  archivos.forEach((a) => fd.append("archivos", a));
+  const r = await fetch(`/api/casos/${casoId}/estado`, { method: "POST", headers: { Authorization: `Bearer ${token.get()}` }, body: fd });
+  const c = await r.json().catch(() => null);
+  if (!r.ok) throw new Error(typeof c?.detail === "string" ? c.detail : `Error ${r.status} al cambiar el estado`);
+  return c;
+}
+
 async function traer(casoId, a) {
   const r = await fetch(`/api/casos/${casoId}/adjuntos/${a.id}`, { headers: { Authorization: `Bearer ${token.get()}` } });
   if (!r.ok) throw new Error(`No se pudo abrir ${a.nombre}`);
   return URL.createObjectURL(await r.blob());
+}
+
+export async function descargar(casoId, a) {
+  const url = await traer(casoId, a);
+  const l = document.createElement("a"); l.href = url; l.download = a.nombre; l.click();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
 function Miniatura({ casoId, a }) {
@@ -37,6 +56,8 @@ function Miniatura({ casoId, a }) {
   return src ? <img className="mini" src={src} alt={a.nombre} /> : <span className="mini" />;
 }
 
+const ETIQUETA = { EVIDENCIA: "Evidencia (en la plantilla)", ADJUNTO: "Adjunto (archivo aparte)", GESTION: "Cambio de estado (interno)" };
+
 export default function Adjuntos({ caso, editable, onCambio, onError }) {
   const ev = useRef(null), ad = useRef(null);
   const [ocupado, setOcupado] = useState(false);
@@ -48,11 +69,7 @@ export default function Adjuntos({ caso, editable, onCambio, onError }) {
   };
   const subir = (archivos, tipo) => { if (archivos.length) hacer(() => subirAdjuntos(caso.id, archivos, tipo)); };
   const abrir = async (a) => {
-    try {
-      const url = await traer(caso.id, a);
-      const l = document.createElement("a"); l.href = url; l.download = a.nombre; l.click();
-      setTimeout(() => URL.revokeObjectURL(url), 60000);
-    } catch (e) { onError(e); }
+    try { await descargar(caso.id, a); } catch (e) { onError(e); }
   };
   const total = caso.adjuntos.filter((a) => a.incluir).reduce((s, a) => s + a.tamano, 0);
 
@@ -76,11 +93,11 @@ export default function Adjuntos({ caso, editable, onCambio, onError }) {
           {a.mime.startsWith("image/") ? <Miniatura casoId={caso.id} a={a} /> : <span className="mini ext">{a.nombre.split(".").pop().toUpperCase()}</span>}
           <div style={{ flex: 1, minWidth: 0 }}>
             <button className="enlace" onClick={() => abrir(a)}>{a.nombre}</button>
-            <div className="tenue" style={{ fontSize: 12 }}>{a.tipo === "EVIDENCIA" ? "Evidencia (en la plantilla)" : "Adjunto (archivo aparte)"} · {peso(a.tamano)} · {a.subido_por}</div>
+            <div className="tenue" style={{ fontSize: 12 }}>{ETIQUETA[a.tipo]} · {peso(a.tamano)} · {a.subido_por}</div>
           </div>
-          <label className="check" style={{ fontSize: 13 }}>
+          {a.tipo !== "GESTION" && <label className="check" style={{ fontSize: 13 }}>
             <input type="checkbox" checked={a.incluir} disabled={!editable || ocupado} onChange={(e) => { const incluir = e.target.checked; hacer(() => api(`/casos/${caso.id}/adjuntos/${a.id}`, { metodo: "PATCH", datos: { incluir } })); }} /> En el correo
-          </label>
+          </label>}
           {editable && <button className="btn chico peligro" disabled={ocupado} onClick={() => window.confirm(`¿Eliminar ${a.nombre}? No se puede recuperar.`) && hacer(() => api(`/casos/${caso.id}/adjuntos/${a.id}`, { metodo: "DELETE" }))}>Quitar</button>}
         </div>
       ))}

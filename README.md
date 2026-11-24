@@ -65,9 +65,10 @@ Nadie escribe destinatarios al enviar: salen del cliente del caso.
 ## Evidencias y adjuntos
 
 - **Evidencia:** imagen PNG o JPG; sale dentro del recuadro *Evidencias* de la plantilla: en la pestaña *Notificación* (y al copiarla) y en el borrador de Outlook. Se puede pegar un recorte con Ctrl+V. Se guarda sin metadatos (autor, equipo, ubicación).
+- **Cambio de estado:** al marcar un estado (o con *Agregar evidencia*) se puede escribir un detalle y cargar el soporte: correo (`.msg`, `.eml`), imagen o documento. Lo hacen todos los roles menos el CISO, en cualquier caso vigente aunque no sea propio. Queda en el seguimiento con el nombre de quien lo hizo; es interno: no va en la plantilla ni en el correo, y no devuelve el caso a revisión. Los correos que traen ejecutables, HTML o macros se rechazan. Para guardar un correo en Outlook: *Archivo → Guardar como*.
 - **Adjunto:** pdf, docx, xlsx, pptx, csv, txt, log, json, zip, png, jpg; va pegado al correo.
 - *En el correo* decide si el archivo se envía al cliente; desmarcado queda solo en el caso.
-- **Quién:** los ven y descargan todos los roles; los agrega o quita quien puede editar el caso. Todo queda en el seguimiento. Si un N1 cambia archivos de un caso revisado, vuelve a *Por revisar*.
+- **Quién:** los ven y descargan todos los roles; los agrega o quita quien puede editar el caso (los del cambio de estado los agrega cualquier analista). Todo queda en el seguimiento. Si un N1 cambia archivos de un caso revisado, vuelve a *Por revisar*.
 - **Se rechazan** ejecutables, macros, HTML, SVG, zip con ejecutables y archivos cuyo contenido no corresponde a su extensión. **No hay antivirus:** no suba muestras de malware.
 - **Límites** (`.env`): `ADJUNTO_MAX_MB` por archivo (15), `CORREO_MAX_MB` por correo (15; lo bloquea), `ADJUNTOS_CASO_MAX_MB` por caso (60).
 - **Avisa** si el nombre o el texto de un archivo menciona a otro cliente. Solo lee el texto de csv, txt, log y json; no revisa PDF, Word, Excel, zip ni imágenes.

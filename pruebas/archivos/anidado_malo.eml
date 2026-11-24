@@ -1,0 +1,41 @@
+From: a@cliente.example
+To: soc@wexler.example
+Subject: RE: caso
+Date: Mon, 01 Jan 2024 10:00:00 -0500
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="===============1735689533279862803=="
+
+--===============1735689533279862803==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+Confirmado.
+
+--===============1735689533279862803==
+Content-Type: message/rfc822
+Content-Transfer-Encoding: 8bit
+MIME-Version: 1.0
+Content-Disposition: attachment
+
+From: x@y.example
+Subject: Alerta en sitio.com
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="===============7915762999091845525=="
+
+--===============7915762999091845525==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+x
+
+--===============7915762999091845525==
+Content-Type: application/octet-stream
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="pagina.html"
+MIME-Version: 1.0
+
+eA==
+
+--===============7915762999091845525==--
+
+--===============1735689533279862803==--

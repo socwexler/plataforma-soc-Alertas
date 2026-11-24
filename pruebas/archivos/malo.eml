@@ -1,0 +1,22 @@
+From: a@cliente.example
+To: soc@wexler.example
+Subject: RE: caso
+Date: Mon, 01 Jan 2024 10:00:00 -0500
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="===============4092644645469155256=="
+
+--===============4092644645469155256==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+Confirmado.
+
+--===============4092644645469155256==
+Content-Type: application/octet-stream
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="factura.exe"
+MIME-Version: 1.0
+
+eA==
+
+--===============4092644645469155256==--

@@ -2,13 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { api, token } from "../api";
 import { useAuth } from "../auth";
-import Adjuntos, { peso } from "../components/Adjuntos";
+import Adjuntos, { descargar, enviarEstado, peso } from "../components/Adjuntos";
+import CambioEstado from "../components/CambioEstado";
 import { Confirmar, Crit, Dato, Estado, MsgError, Revision } from "../components/Ui";
 import { copiarHtml, copiarTexto, duracion, ESTADOS, ESTADOS_GLPI, fechaHora, infoGlpi } from "../util";
-
-const CAMPOS_IN = ["servicio", "cliente_id", "caso_uso_id", "alerta", "criticidad", "tecnica", "tactica_id", "resumen_ejecutivo",
-  "analisis", "acciones_recomendadas", "geolocalizacion", "reporting_ip", "log_evento", "fecha_evento", "fecha_reporte",
-  "estado", "acciones_cliente", "glpi_ticket_id"];
 
 export default function CasoDetalle() {
   const { id } = useParams();
@@ -29,6 +26,7 @@ export default function CasoDetalle() {
   const [ocupado, setOcupado] = useState(false);
   const [anular, setAnular] = useState(false);
   const [motivo, setMotivo] = useState("");
+  const [nuevoEstado, setNuevoEstado] = useState(null);
   useEffect(() => { infoGlpi(api).then(setGlpi); }, []);
 
   const cargarNotif = useCallback(() => api(`/casos/${id}/notificacion`).then(setNotif).catch(setError), [id]);
@@ -48,6 +46,7 @@ export default function CasoDetalle() {
     setMsg(x.anulado_en ? "Caso anulado: ya no cuenta en el tablero ni en los informes." : "Caso restaurado: vuelve a contar en el tablero y los informes.");
     window.dispatchEvent(new Event("revision-cambio"));
   };
+  const puedeEstado = puede("casos.crear") && !c.anulado_en;   // en cualquier caso, aunque no sea propio
   const puedeRevisar = puede("casos.revisar") && !c.anulado_en && c.revision && c.analista?.id !== usuario.id;
   const revisar = async (resultado) => {
     setOcupado(true); setError(null); setMsg(null);
@@ -60,11 +59,10 @@ export default function CasoDetalle() {
     setOcupado(false);
   };
 
-  const cambiarEstado = async (estado) => {
-    const datos = Object.fromEntries(CAMPOS_IN.map((k) => [k, k === "cliente_id" ? c.cliente.id : c[k]]));
-    datos.estado = estado;
-    try { await api(`/casos/${id}`, { metodo: "PUT", datos }); setMsg(`Estado actualizado a: ${ESTADOS[estado]}`); cargar(); }
-    catch (e) { setError(e); }
+  const cambiarEstado = async (comentario, archivos) => {
+    const x = await enviarEstado(id, nuevoEstado, comentario, archivos);
+    setMsg(nuevoEstado === c.estado ? "Evidencia agregada." : `Estado actualizado a: ${ESTADOS[nuevoEstado]}`);
+    setC(x); setNuevoEstado(null); setError(null);
   };
 
   const comentar = async (e) => {
@@ -136,6 +134,7 @@ export default function CasoDetalle() {
             <textarea rows={3} maxLength={500} value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ej.: registrado por error, duplicado de WX…" /></label>
         </Confirmar>
       )}
+      {nuevoEstado && <CambioEstado caso={c} estado={nuevoEstado} onAceptar={cambiarEstado} onCerrar={() => setNuevoEstado(null)} />}
       {msg && <div className="alerta ok">{msg}</div>}
       <MsgError e={error} />
 
@@ -262,13 +261,14 @@ export default function CasoDetalle() {
               )}
             </div>
           )}
-          {puedeEditar && (
+          {puedeEstado && (
             <div className="panel">
               <h2>Estado</h2>
               <div className="acciones">
                 {Object.entries(ESTADOS).filter(([k]) => k !== c.estado).map(([k, v]) => (
-                  <button key={k} className="btn chico" onClick={() => cambiarEstado(k)}>Marcar: {v}</button>
+                  <button key={k} className="btn chico" onClick={() => setNuevoEstado(k)}>Marcar: {v}</button>
                 ))}
+                <button className="btn chico" onClick={() => setNuevoEstado(c.estado)}>Agregar evidencia</button>
               </div>
             </div>
           )}
@@ -279,6 +279,9 @@ export default function CasoDetalle() {
               <div key={s.id} className={`seguimiento tipo-${s.tipo}`}>
                 <div className="meta">{s.autor_nombre} · {fechaHora(s.creado_en)}{s.tipo === "cliente" && " · respuesta del cliente"}{s.tipo === "glpi" && " · GLPI"}{s.tipo === "revision" && " · revisión"}{s.tipo === "correo" && " · correo"}{s.tipo === "adjunto" && " · archivos"}{s.tipo === "anulacion" && " · anulación"}</div>
                 <div className="pre">{s.comentario}</div>
+                {c.adjuntos.filter((a) => a.seguimiento_id === s.id).map((a) => (
+                  <div key={a.id}><button className="enlace" onClick={() => descargar(c.id, a).catch(setError)}>{a.nombre}</button> <span className="tenue">{peso(a.tamano)}</span></div>
+                ))}
               </div>
             ))}
             {puedeComentar && <form onSubmit={comentar} className="grid" style={{ marginTop: 12 }}>

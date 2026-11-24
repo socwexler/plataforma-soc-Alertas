@@ -10,6 +10,9 @@ control.json
 *.xlsm
 *.csv
 *.eml
+*.msg
+!pruebas/archivos/*.eml
+!pruebas/archivos/*.msg
 *.pem
 *.key
 *.pfx

@@ -161,10 +161,11 @@ class RevisionIn(BaseModel):
 class AdjuntoOut(ORM):
     id: int
     nombre: str
-    tipo: Literal["EVIDENCIA", "ADJUNTO"]
+    tipo: Literal["EVIDENCIA", "ADJUNTO", "GESTION"]
     mime: str
     tamano: int
     incluir: bool
+    seguimiento_id: int | None
     subido_por: str
     creado_en: datetime
 
