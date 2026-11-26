@@ -40,12 +40,41 @@ for (const [t, v] of [["crítica sobre alta", { sla_critica: 46 }], ["alta sobre
 ver("sin cambios tras el rechazo", JSON.stringify((await j(A, "/casos/resumen"))[1].sla) === JSON.stringify(OBJ));
 const cs = (await j(A, "/clientes", "POST", { codigo: "SLA", nombre: "Cliente SLA" }))[1], rep0 = Math.floor(Date.now() / 1000) * 1000 - 60e3;
 for (const [crit, m] of Object.entries(OBJ)) for (const seg of [0, 1]) {
-  [s, r] = await j(T.N2, "/casos", "POST", { servicio: "SOC", cliente_id: cs.id, alerta: "SLA", criticidad: crit, resumen_ejecutivo: "x", analisis: "x", acciones_recomendadas: "x", fecha_evento: new Date(rep0 - m * 60e3 - seg * 1000).toISOString(), fecha_reporte: new Date(rep0).toISOString() });
-  ver(`${crit} a ${m} min y ${seg} s`, s === 201 && r.dentro_sla === !seg && r.sla_minutos === m, [s, r?.dentro_sla, r?.sla_minutos, r?.detail]);
+  const base = { servicio: "SOC", cliente_id: cs.id, alerta: "SLA", criticidad: crit, resumen_ejecutivo: "x", analisis: "x", acciones_recomendadas: "x", fecha_evento: new Date(rep0 - m * 60e3 - seg * 1000).toISOString() };
+  [s, r] = await j(T.N2, "/casos", "POST", base); [s, r] = await j(T.N2, "/casos/" + r.id, "PUT", { ...base, fecha_reporte: new Date(rep0).toISOString() });   // la corrige un revisor
+  ver(`${crit} a ${m} min y ${seg} s`, s === 200 && r.dentro_sla === !seg && r.sla_minutos === m, [s, r?.dentro_sla, r?.sla_minutos, r?.detail]);
 }
 const tab = async () => (await j(A, "/tablero?cliente_id=" + cs.id))[1]; let tb = await tab();
 ver("tablero por criticidad", tb.por_sla.length === 4 && tb.por_sla.every(x => x.con_tiempo === 2 && x.dentro === 1 && x.objetivo === OBJ[x.criticidad]), tb.por_sla);
 ver("total y analista cuadran", tb.indicadores.con_tiempo === 8 && tb.indicadores.dentro_sla === 4 && tb.por_analista[0].dentro_sla === 4, [tb.indicadores, tb.por_analista]);
+// hora de reporte automática
+const ch = (await j(A, "/clientes", "POST", { codigo: "HRA", nombre: "Cliente hora" }))[1];   // aparte: no altera las cifras del cliente SLA
+const caso1 = { servicio: "SOC", cliente_id: ch.id, alerta: "Hora automática", criticidad: "Alta", resumen_ejecutivo: "x", analisis: "x", acciones_recomendadas: "x" };
+const ev = new Date(Date.now() - 20 * 60e3).toISOString(), t0 = Date.now();
+[s, r] = await j(T.N1, "/casos", "POST", { ...caso1, fecha_evento: ev, fecha_reporte: "2020-01-01T00:00:00Z" }); const hr = r;
+ver("la hora de reporte la pone el servidor", s === 201 && Math.abs(new Date(r.fecha_reporte).getTime() - t0) < 60e3 && r.minutos_respuesta === 20, [s, r.fecha_reporte, r.minutos_respuesta]);
+ver("la fecha de bitácora es la de Colombia", r.numero && sql(`select fecha_bitacora = (fecha_reporte at time zone 'America/Bogota')::date from casos where id=${r.id}`) === "t");
+ver("evento en el futuro se rechaza", (await j(T.N1, "/casos", "POST", { ...caso1, fecha_evento: new Date(Date.now() + 120e3).toISOString() }))[0] === 422);
+const datosHr = { ...caso1, fecha_evento: ev };
+ver("el N1 no cambia la hora de reporte", (await j(T.N1, "/casos/" + hr.id, "PUT", { ...datosHr, fecha_reporte: new Date(Date.now() - 5 * 60e3).toISOString() }))[0] === 403);
+[s, r] = await j(T.N1, "/casos/" + hr.id, "PUT", { ...datosHr, fecha_reporte: null }); ver("el caso trae el cliente para editarlo", hr.cliente_id === ch.id && (await j(T.N1, "/casos/" + hr.id))[1].cliente_id === ch.id, hr.cliente_id);
+ver("el N1 edita sin tocarla", s === 200 && r.fecha_reporte === hr.fecha_reporte, [s, r?.fecha_reporte]);
+[s, r] = await j(T.N1, "/casos/" + hr.id, "PUT", { ...datosHr, fecha_reporte: hr.fecha_reporte }); ver("enviar la misma hora no es un cambio", s === 200 && r.fecha_reporte === hr.fecha_reporte);
+const nueva = new Date(Date.now() - 10 * 60e3); nueva.setMilliseconds(0); [s, r] = await j(T.N2, "/casos/" + hr.id, "PUT", { ...datosHr, fecha_reporte: nueva.toISOString() });
+ver("un revisor la corrige", s === 200 && new Date(r.fecha_reporte).getTime() === nueva.getTime() && r.minutos_respuesta === Math.floor((nueva.getTime() - Date.parse(ev)) / 60e3), [s, r?.fecha_reporte, r?.minutos_respuesta]);
+ver("la corrección queda en el seguimiento", (await j(T.N2, `/casos/${hr.id}/seguimientos`))[1]?.some?.((x) => /Hora de reporte corregida: .* → .*hora de Colombia/.test(x.comentario)) || sql(`select count(*) from seguimientos where caso_id=${hr.id} and comentario like 'Hora de reporte corregida%'`) === "1");
+ver("revisor: hora anterior al evento", (await j(T.N2, "/casos/" + hr.id, "PUT", { ...datosHr, fecha_reporte: new Date(Date.parse(ev) - 60e3).toISOString() }))[0] === 422);
+// sección SLA por analista
+let sl = (await j(A, "/tablero/sla?cliente_id=" + cs.id))[1], an = sl.por_analista[0];
+ver("SLA por analista", sl.por_analista.length === 1 && an.nombre === "Conf N2" && an.con_tiempo === 8 && an.dentro === 4 && Object.entries(OBJ).every(([c]) => an.por_criticidad[c]?.con_tiempo === 2 && an.por_criticidad[c]?.dentro === 1), sl.por_analista);
+ver("SLA por criticidad con objetivo", sl.por_criticidad.every(x => x.con_tiempo === 2 && x.dentro === 1 && x.objetivo === OBJ[x.criticidad] && x.max_minutos === OBJ[x.criticidad]), sl.por_criticidad);
+ver("casos fuera del SLA", sl.total_fuera === 4 && sl.fuera.length === 4 && sl.fuera.every(x => x.exceso_minutos > 0 && x.exceso_minutos < 0.05 && x.objetivo === OBJ[x.criticidad]), sl.fuera);
+ver("evolución cuadra", sl.unidad === "dia" && sl.evolucion.length === 30 && sl.evolucion.reduce((a, x) => a + x.con_tiempo, 0) === 8 && sl.evolucion.reduce((a, x) => a + x.dentro, 0) === 4, sl.evolucion.filter(x => x.con_tiempo));
+const n2 = an.id; ver("detalle de un analista", (await j(A, `/tablero/sla?cliente_id=${cs.id}&analista_id=${n2}`))[1].resumen.con_tiempo === 8 && (await j(A, `/tablero/sla?cliente_id=${cs.id}&analista_id=${n2 + 100000}`))[1].resumen.con_tiempo === 0);
+sl = (await j(A, "/tablero/sla?desde=2026-01-01"))[1]; const tg2 = (await j(A, "/tablero?desde=2026-01-01"))[1].indicadores;
+ver("SLA igual al del tablero", sl.resumen.con_tiempo === tg2.con_tiempo && sl.resumen.dentro === tg2.dentro_sla && sl.unidad === "semana" && sl.por_criticidad.reduce((a, x) => a + x.con_tiempo, 0) === sl.resumen.con_tiempo && sl.fuera.length === Math.min(100, sl.total_fuera), [sl.resumen, tg2]);
+for (const x of ["N1"]) ver(`${x} no ve el SLA por analista`, (await j(T[x], "/tablero/sla"))[0] === 403); ver("CISO ve el SLA por analista", (await j(T.CISO, "/tablero/sla"))[0] === 200);
+ver("rango inválido", (await j(A, "/tablero/sla?desde=2026-02-01&hasta=2026-01-01"))[0] === 422 && (await j(A, "/tablero/sla?desde=2020-01-01&hasta=2026-01-01"))[0] === 422);
 [s] = await put("general", { sla_alta: 46, sla_media: 121 }); tb = await tab(); ver("el cambio se aplica a lo ya registrado", s === 200 && tb.indicadores.dentro_sla === 6, tb.por_sla);
 const tg = (await j(A, "/tablero"))[1]; ver("todo el tablero cuadra", tg.por_sla.reduce((a, x) => a + x.dentro, 0) === tg.indicadores.dentro_sla && tg.por_sla.reduce((a, x) => a + x.con_tiempo, 0) === tg.indicadores.con_tiempo, tg.por_sla);
 const rs = (await j(A, "/casos/resumen"))[1], t30 = (await j(A, "/tablero?desde=" + new Date(Date.now() - 5 * 3600e3 - 30 * 864e5).toISOString().slice(0, 10)))[1].indicadores; ver("inicio y tablero coinciden", rs.fuera_sla_30 === t30.con_tiempo - t30.dentro_sla && rs.con_tiempo_30 === t30.con_tiempo, [rs, t30]);
@@ -122,7 +151,8 @@ const dev = m.find(x => x.texto.includes("devuelto")), rev = m.filter(x => x.tex
 ver("sin detalle del caso", !m.some(x => /RESERVADO/.test(x.texto))); ver("sin inyección de cabeceras", !m.some(x => /^Bcc:/mi.test(x.texto))); ver("con enlace", m.some(x => x.texto.includes("http://soc.interno:8080/casos/")));
 ver("N2 no genera aviso", !m.some(x => x.texto.includes("De N2 no avisa")));
 // agrupar
-await put("avisos", { avisos_agrupar_min: 30 }); for (const i of [1, 2, 3]) await j(T.N1, "/casos", "POST", { ...caso, alerta: "Grupo " + i }); enviar(); ver("espera para agrupar", sql("select count(*) from avisos where estado='PENDIENTE'") === "3"); sql("update avisos set creado_en=now()-interval '31 minutes' where estado='PENDIENTE'"); const antes = correos().length; enviar(); await S(500); m = correos(); ver("un solo correo agrupado", sql("select count(*) from avisos where estado='PENDIENTE'") === "0" && m.length === antes + 1 && ["Grupo 1", "Grupo 2", "Grupo 3"].every(x => m.at(-1).texto.includes(x)), [antes, m.length]);
+await put("avisos", { avisos_agrupar_min: 30 }); for (const i of [1, 2, 3]) await j(T.N1, "/casos", "POST", { ...caso, alerta: "Grupo " + i }); enviar(); ver("espera para agrupar", sql("select count(*) from avisos where estado='PENDIENTE'") === "3"); const antes = correos().length; sql("update avisos set creado_en=now()-interval '31 minutes' where estado='PENDIENTE'"); enviar(); // el hilo también puede enviarlo: se cuenta antes y se espera
+for (let i = 0; i < 15 && sql("select count(*) from avisos where estado='PENDIENTE'") !== "0"; i++) await S(1000); await S(500); m = correos(); ver("un solo correo agrupado", sql("select count(*) from avisos where estado='PENDIENTE'") === "0" && m.length === antes + 1 && ["Grupo 1", "Grupo 2", "Grupo 3"].every(x => m.at(-1).texto.includes(x)), [antes, m.length]);
 // servidor caído: el caso se guarda y se reintenta
 sim("/_poner/smtp/no"); await put("avisos", { avisos_agrupar_min: 0 }); [s] = await j(T.N1, "/casos", "POST", { ...caso, alerta: "Con correo caído" }); ver("el caso se guarda igual", s === 201); enviar(); ver("queda pendiente con error", /^PENDIENTE:\d+:.+/.test(sql("select estado||':'||intentos||':'||coalesce(error,'') from avisos order by id desc limit 1")), sql("select estado||':'||intentos||':'||coalesce(error,'') from avisos order by id desc limit 1"));
 sim("/_poner/smtp/si"); await j(A, "/config/avisos/reintentar", "POST"); for (let i = 0; i < 15 && sql("select count(*) from avisos where estado='PENDIENTE'") !== "0"; i++) await S(2000); ver("reintenta", sql("select estado from avisos order by id desc limit 1") === "ENVIADO");

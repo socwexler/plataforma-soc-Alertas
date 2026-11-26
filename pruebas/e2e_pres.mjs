@@ -63,6 +63,10 @@ ver("sin panel lateral en ninguna hoja", !/class="lado|Gestión del periodo|Lect
 ver("sin recursos externos", [...t.matchAll(/(?:src|href)="(https?:[^"]+)"/g)].length === 0);
 [st, html, hd] = await raw(A, E + "&descargar=true"); ver("HTML ejecutivo", /Informe_ejecutivo_.*\.html/.test(hd.get("content-disposition")) && !html.toString().includes('id="b-pdf"'), hd.get("content-disposition"));
 [st, b, hd] = await raw(A, I + "/presentacion.pdf?estilo=ejecutiva"); ver("PDF ejecutivo", st === 200 && b.subarray(0, 4).toString() === "%PDF" && /Informe_ejecutivo_/.test(hd.get("content-disposition")), [st, b.length]); console.log("   PDF ejecutivo", (b.length / 1e6).toFixed(1), "MB");
+ver("botón de modo día/noche", t.includes('id="b-tema"') && !/<body class="[^"]*oscuro/.test(t));
+[st, b] = await raw(A, I + "/presentacion.pdf?estilo=ejecutiva&tema=oscuro"); ver("PDF ejecutivo en modo noche", st === 200 && b.subarray(0, 4).toString() === "%PDF", st); fs.writeFileSync(SAL + "/ejecutiva_noche.pdf", b);
+[st, b] = await raw(A, I + "/presentacion.pdf?tema=claro"); ver("PDF interactivo en modo día", st === 200 && b.subarray(0, 4).toString() === "%PDF", st); fs.writeFileSync(SAL + "/interactiva_dia.pdf", b);
+ver("modo inválido", (await raw(A, I + "/presentacion.pdf?tema=rojo"))[0] === 422);
 const docx = async () => execFileSync("docker", ["exec", "-i", "soc-prueba-api-1", "python", "-c", "import sys,io,docx;d=docx.Document(io.BytesIO(sys.stdin.buffer.read()));sys.stdout.buffer.write('\\n'.join(p.text for p in d.paragraphs).encode())"], { input: (await raw(A, I + "/docx"))[1], maxBuffer: 1e8 }).toString(); const TX = "tiempo mediano entre";
 let w = await docx(); ver("Word sin tiempos por defecto", w.length > 2000 && !w.includes(TX) && !/dentro del objetivo/.test(w)); ver("el texto se conserva en el informe", (await j(A, I))[1].textos.tiempos_SOC.includes(TX));
 ver("tiempos ocultos por defecto", !t.includes("Tiempo de notificación") && !t.includes(">en objetivo<"));

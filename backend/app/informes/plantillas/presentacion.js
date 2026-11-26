@@ -71,6 +71,19 @@
   });
   $$('[data-ir]').forEach((b) => { b.onclick = () => { const i = slides.findIndex((s) => s.dataset.sec === b.dataset.ir); if (i >= 0) go(i); }; });
   const completa = () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.().catch(() => {}));
+
+  // ---------- modo día/noche: cada estilo tiene el suyo por defecto (interactiva oscura, ejecutiva clara)
+  const BASE = D.estilo === 'ejecutiva' ? 'claro' : 'oscuro', OTRO = BASE === 'claro' ? 'oscuro' : 'claro', CLAVE_TEMA = 'soc_pres_tema_' + D.estilo;
+  const leerTema = () => { try { return localStorage.getItem(CLAVE_TEMA); } catch { return null; } };
+  const ponerTema = (t, guardar) => {
+    document.body.classList.toggle(OTRO, t === OTRO);
+    const b = $('#b-tema'); if (b) { b.querySelector('use').setAttribute('href', t === 'oscuro' ? '#i-sol' : '#i-luna'); b.title = (t === 'oscuro' ? 'Modo día' : 'Modo noche') + ' (T)'; }
+    if (guardar) { try { localStorage.setItem(CLAVE_TEMA, t); } catch { /* sin almacenamiento */ } }
+  };
+  const temaActual = () => (document.body.classList.contains(OTRO) ? OTRO : BASE);
+  if (!PDF) ponerTema(leerTema() === OTRO ? OTRO : BASE, false);
+  const alternarTema = () => ponerTema(temaActual() === 'claro' ? 'oscuro' : 'claro', true);
+  if ($('#b-tema')) $('#b-tema').onclick = alternarTema;
   $('#b-prev').onclick = () => go(cur - 1); $('#b-next').onclick = () => go(cur + 1);
   $('#b-index').onclick = () => abrir('index'); $('#b-notes').onclick = () => abrir('notes'); $('#b-full').onclick = completa;
   addEventListener('keydown', (ev) => {
@@ -83,6 +96,7 @@
     else if (ev.key.toLowerCase() === 'f' && !ev.ctrlKey) completa();
     else if (ev.key.toLowerCase() === 'i') abrir('index');
     else if (ev.key.toLowerCase() === 'n') abrir('notes');
+    else if (ev.key.toLowerCase() === 't' && !ev.ctrlKey) alternarTema();
     else if (ev.key === 'Escape') { abrir('index', false); abrir('notes', false); }
   });
   let tx = null;
@@ -270,7 +284,7 @@
   if (bp) bp.onclick = async () => {
     bp.disabled = true;
     try {
-      const r = await fetch(`/api/informes/${D.informe_id}/presentacion.pdf?estilo=${D.estilo}`, { headers: { Authorization: 'Bearer ' + localStorage.getItem('soc_token') } });
+      const r = await fetch(`/api/informes/${D.informe_id}/presentacion.pdf?estilo=${D.estilo}&tema=${temaActual()}`, { headers: { Authorization: 'Bearer ' + localStorage.getItem('soc_token') } });
       if (!r.ok) throw new Error('Error ' + r.status);
       const u = URL.createObjectURL(await r.blob()), a = document.createElement('a');
       a.href = u; a.download = D.archivo; a.click(); setTimeout(() => URL.revokeObjectURL(u), 60000);

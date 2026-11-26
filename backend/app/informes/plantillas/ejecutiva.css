@@ -101,3 +101,27 @@ body.pdf .slide h2 em { background: none; color: var(--red); } body.pdf .portada
 .dias u { height: 0; transition: height 1.1s var(--ease) .4s; } .slide.active .dias u, body.pdf .dias u { height: var(--ht); }
 .mapa-lay { height: auto; }
 .mapa .zoom button { color: #fff; }
+
+/* ---------- modo noche (botón de la luna o tecla T): la ejecutiva en fondo oscuro ---------- */
+body.oscuro {
+  --bg: #0c0e15; --panel: #151823; --panel2: #1c202d; --line: rgba(255,255,255,.09); --line2: rgba(255,255,255,.17);
+  --text: #eef0f6; --muted: #b6bac9; --dim: #858a9c;
+  --red: #ff1f55; --wine: #ff7d9b; --c: #ff2d5f; --h: #ff4d6d; --m: #ffad33; --l: #3ddc97; --ok: #3ddc97; --gris: #8d93a8;
+}
+html:has(body.oscuro), body.oscuro, body.oscuro #stage { background: var(--bg); }
+body.oscuro .slide:not(.portada):not(.fin) { background: radial-gradient(900px 420px at 100% 0%, rgba(255,0,61,.12), transparent 70%), var(--bg); }
+body.oscuro .chip-top, body.oscuro .pastilla, body.oscuro .pill, body.oscuro .nota, body.oscuro .tabs button { background: var(--panel2); color: var(--text); }
+body.oscuro .tabs button.on { background: var(--red); color: #fff; }
+body.oscuro .tj, body.oscuro .actv, body.oscuro .bol, body.oscuro .next div, body.oscuro .agenda button, body.oscuro .mapa-lay .panel { background: var(--panel); }
+body.oscuro .tj.gris { background: linear-gradient(100deg, #191c28, #141722); }
+body.oscuro .ico { background: #2a2e3d; }
+body.oscuro .apilada, body.oscuro .hb u, body.oscuro .rk .it u, body.oscuro .actv .li u { background: rgba(255,255,255,.08); }
+body.oscuro .tbl tbody tr:nth-child(even) td { background: rgba(255,255,255,.025); } body.oscuro .tbl tr.tot td { background: var(--panel2) !important; }
+body.oscuro .calor td.n { border-left-color: var(--bg); }
+body.oscuro .rk .it:hover, body.oscuro .rk .it.on { background: var(--panel2); }
+body.oscuro .dias .fd u { background: #4a4f62; }
+body.oscuro .pill.r { background: rgba(255,31,85,.14); color: #ff8aa6; border-color: rgba(255,31,85,.4); }
+body.oscuro .agenda .n { color: var(--bg); -webkit-text-stroke-color: #3a3f50; }
+body.oscuro .clogo { border-color: transparent; }
+body.oscuro .linea-max { color: #ff8aa6; }
+body.oscuro #index, body.oscuro #notes { background: #151823; color: var(--text); border-color: var(--line2); } body.oscuro #index a { color: var(--text); }

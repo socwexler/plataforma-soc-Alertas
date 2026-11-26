@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../auth";
+import Isotipo from "../components/Isotipo";
 import "../login.css";
 
 // Mismo diseño del ingreso de CYWEX (vulnerabilidades). Las cuentas las crea el administrador: no hay registro.
@@ -10,16 +11,6 @@ const recordar = (u) => { try { if (u) localStorage.setItem(RECORDADO, u); else 
 const Icono = ({ children }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{children}</svg>
 );
-
-function Isotipo() {
-  return (
-    <span className="login-isotipo">
-      <svg viewBox="0 0 648.264 648.264" role="img" aria-label="Wexler">
-        <path fill="#ff003d" d="M436.759,588.027l-101.577-215.853,51.296-101.578,47.996,69.835,116.561-234.899h11.923C503.699,40.825,418.789,0,324.132,0S144.566,40.825,85.306,105.531h8.627l111.989,234.899,121.132-234.899h105.134l-223.98,482.496L24.588,200.383C8.811,238.527,0,280.287,0,324.132c0,179.013,145.119,324.132,324.132,324.132s324.132-145.119,324.132-324.132c0-46.825-10.131-91.216-27.999-131.413l-183.507,395.308Z" />
-      </svg>
-    </span>
-  );
-}
 
 function Ilustracion() {
   return (
@@ -74,7 +65,7 @@ export default function Login() {
     <div className="login">
       <div className="login-caja">
         <div className="login-forma">
-          <div className="login-marca"><Isotipo /><h1>Plataforma <span>SOC</span></h1></div>
+          <div className="login-marca"><Isotipo className="login-isotipo" /><h1>Plataforma <span>SOC</span></h1></div>
           <p className="login-intro">Ingrese con las credenciales que le fueron asignadas.</p>
           <form onSubmit={enviar}>
             <label className="login-campo">

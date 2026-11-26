@@ -3,7 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='M16 2 4 7v8c0 7.5 5.1 13.4 12 15 6.9-1.6 12-7.5 12-15V7z' fill='%230f2a4a'/><path d='m11 16 3.5 3.5L21 13' stroke='%2333c3a3' stroke-width='3' fill='none'/></svg>" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 648 648'><path fill='%23ff003d' d='M436.759,588.027l-101.577-215.853,51.296-101.578,47.996,69.835,116.561-234.899h11.923C503.699,40.825,418.789,0,324.132,0S144.566,40.825,85.306,105.531h8.627l111.989,234.899,121.132-234.899h105.134l-223.98,482.496L24.588,200.383C8.811,238.527,0,280.287,0,324.132c0,179.013,145.119,324.132,324.132,324.132s324.132-145.119,324.132-324.132c0-46.825-10.131-91.216-27.999-131.413l-183.507,395.308Z'/></svg>" />
+    <script>
+      // modo día/noche antes de pintar (ver src/tema.js)
+      try { document.documentElement.dataset.tema = localStorage.getItem("soc_tema") || (matchMedia("(prefers-color-scheme: dark)").matches ? "oscuro" : "claro"); } catch (e) { /* sin almacenamiento */ }
+    </script>
     <title>Plataforma SOC · Wexler</title>
   </head>
   <body>

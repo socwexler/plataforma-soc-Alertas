@@ -207,9 +207,14 @@ def crear(datos: CasoIn, crear_ticket: bool = False, db: Session = Depends(get_d
           yo: Usuario = Depends(requiere("casos.crear"))):
     """Registra el caso. Con crear_ticket=true también crea el ticket en GLPI; si GLPI falla,
     el caso queda guardado igual y el error se devuelve en glpi_error para reintentar."""
+    # La hora de reporte es la del servidor al guardar (no la escribe el analista)
+    datos = datos.model_copy(update={"fecha_reporte": None})
     _validar(db, datos)
+    ahora = datetime.now(timezone.utc)
+    if datos.fecha_evento > ahora:
+        raise HTTPException(422, "La hora del evento no puede ser posterior a la hora actual de Colombia (la del reporte)")
     c = Caso(**datos.model_dump())
-    c.fecha_reporte = c.fecha_reporte or datetime.now(timezone.utc)
+    c.fecha_reporte = ahora
     c.fecha_bitacora = c.fecha_reporte.astimezone(TZ).date()
     c.analista_id = yo.id
     c.numero = siguiente_numero(db, datos.servicio)
@@ -244,7 +249,13 @@ def editar(cid: int, datos: CasoIn, db: Session = Depends(get_db), yo: Usuario =
     contenido_anterior = {k: getattr(c, k) for k in CONTENIDO}
     for k, v in datos.model_dump(exclude={"fecha_reporte"}).items():
         setattr(c, k, v)
-    if datos.fecha_reporte:
+    # Solo un revisor corrige la hora de reporte, y queda en el seguimiento
+    if datos.fecha_reporte and datos.fecha_reporte != c.fecha_reporte:
+        if not tiene(yo, "casos.revisar"):
+            raise HTTPException(403, "La hora de reporte es automática: solo un revisor (N2 o superior) puede corregirla")
+        f = lambda d: d.astimezone(TZ).strftime("%d/%m/%Y %H:%M:%S") if d else "sin hora"  # noqa: E731
+        db.add(Seguimiento(caso_id=c.id, autor_id=yo.id, autor_nombre=yo.nombre, tipo="estado",
+                           comentario=f"Hora de reporte corregida: {f(c.fecha_reporte)} → {f(datos.fecha_reporte)} (hora de Colombia)"))
         c.fecha_reporte = datos.fecha_reporte
         if c.origen == "app":  # los importados conservan la Fecha de la bitácora
             c.fecha_bitacora = c.fecha_reporte.astimezone(TZ).date()

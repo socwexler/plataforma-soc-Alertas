@@ -3,7 +3,7 @@ import { num } from "../util";
 
 // Paleta validada (validate_palette.js, modo claro): orden de severidad Baja → Crítica
 export const COLOR_CRIT = { Baja: "#2a78d6", Media: "#eda100", Alta: "#e34948", Crítica: "#9b2f6e", Sin: "#a3a8b0" };
-export const SERIE = "#2a78d6";
+export const SERIE = "#8b5cf6";   // morado de la marca: se lee en el tema claro y en el oscuro
 
 function useAncho() {
   const ref = useRef(null);

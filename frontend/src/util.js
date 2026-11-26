@@ -7,10 +7,15 @@ export const CRITICIDADES = ["Crítica", "Alta", "Media", "Baja"];
 export const ROLES = { N1: "Analista N1", N2: "Analista N2", N3: "Especialista N3", LIDER: "Líder SOC", CISO: "CISO", ADMIN: "Administrador" };
 export const REVISIONES = { PENDIENTE: "Por revisar", REVISADO: "Revisado", OBSERVADO: "Devuelto" };
 
-const fmtFecha = new Intl.DateTimeFormat("es-CO", { day: "2-digit", month: "short", year: "numeric" });
+// Las fechas se muestran y se escriben en hora de Colombia (UTC−5, sin horario de verano), sin importar la zona del equipo
+export const ZONA = "America/Bogota";
+const fmtFecha = new Intl.DateTimeFormat("es-CO", { day: "2-digit", month: "short", year: "numeric", timeZone: ZONA });
 const fmtFechaHora = new Intl.DateTimeFormat("es-CO", {
-  day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
+  day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: ZONA,
 });
+const fmtIso = new Intl.DateTimeFormat("sv-SE", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: ZONA });
+/** Fecha AAAA-MM-DD de Colombia (para filtros de fecha). */
+export const isoCol = (d) => fmtIso.format(new Date(d)).slice(0, 10);
 const fmtNum = new Intl.NumberFormat("es-CO");
 
 export const fecha = (v) => (v ? fmtFecha.format(new Date(v)) : "—");
@@ -27,14 +32,10 @@ export function duracion(min) {
 /** Objetivos por criticidad en una línea: «Crítica 35 min · Alta 45 min · Media 2 h · Baja 4 h». */
 export const textoSla = (o) => Object.entries(o || {}).map(([c, m]) => `${c} ${duracion(m)}`).join(" · ");
 
-/** Date -> valor de <input type="datetime-local"> en hora local. */
-export function aInputLocal(d) {
-  if (!d) return "";
-  const x = new Date(d);
-  const p = (n) => String(n).padStart(2, "0");
-  return `${x.getFullYear()}-${p(x.getMonth() + 1)}-${p(x.getDate())}T${p(x.getHours())}:${p(x.getMinutes())}`;
-}
-export const deInputLocal = (s) => (s ? new Date(s).toISOString() : null);
+/** Date -> valor de <input type="datetime-local"> en hora de Colombia. */
+export const aInputLocal = (d) => (d ? fmtIso.format(new Date(d)).replace(" ", "T") : "");
+/** Valor de <input type="datetime-local"> (hora de Colombia) -> ISO. */
+export const deInputLocal = (s) => (s ? new Date(`${s.length === 16 ? `${s}:00` : s}-05:00`).toISOString() : null);
 
 /** Texto sin tildes y en minúsculas, para búsquedas. */
 export const clave = (s) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();

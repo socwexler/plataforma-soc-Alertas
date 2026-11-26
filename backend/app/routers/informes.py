@@ -349,10 +349,10 @@ def ver_presentacion(iid: int, descargar: bool = False, estilo: Literal["interac
 
 
 @router.get("/{iid}/presentacion.pdf")
-def presentacion_pdf(iid: int, estilo: Literal["interactiva", "ejecutiva"] = "interactiva", db: Session = Depends(get_db), _=Depends(requiere("informes.ver"))):
+def presentacion_pdf(iid: int, estilo: Literal["interactiva", "ejecutiva"] = "interactiva", tema: Literal["claro", "oscuro"] | None = None, db: Session = Depends(get_db), _=Depends(requiere("informes.ver"))):
     inf = _obtener(db, iid)
     try:
-        pdf = presentacion_html.pdf(inf, _metricas(db, inf), estilo)
+        pdf = presentacion_html.pdf(inf, _metricas(db, inf), estilo, tema)
     except ErrorConversion as e:
         raise HTTPException(503, str(e))
     nombre = _nombre_archivo(inf, "pdf").replace("Informe_", "Informe_ejecutivo_" if estilo == "ejecutiva" else "Presentacion_")

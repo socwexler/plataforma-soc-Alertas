@@ -149,7 +149,7 @@ export default function CasoDetalle() {
               <Dato t="Evento en SIEM">{fechaHora(c.fecha_evento)}</Dato>
               <Dato t="Reporte al cliente">{fechaHora(c.fecha_reporte)}</Dato>
               <Dato t="Tiempo de reporte">{duracion(c.minutos_respuesta)}
-                {c.dentro_sla !== null && <div style={{ fontSize: 12, color: c.dentro_sla ? "var(--acento-2)" : "var(--peligro)" }}>{c.dentro_sla ? "Dentro" : "Fuera"} del SLA ({duracion(c.sla_minutos)})</div>}</Dato>
+                {c.dentro_sla !== null && <div style={{ fontSize: 12, color: c.dentro_sla ? "var(--ok-tx)" : "var(--peligro)" }}>{c.dentro_sla ? "Dentro" : "Fuera"} del SLA ({duracion(c.sla_minutos)})</div>}</Dato>
               <Dato t="Ticket GLPI">
                 {c.glpi_ticket_id
                   ? <>{glpi.url_web ? <a href={`${glpi.url_web}${c.glpi_ticket_id}`} target="_blank" rel="noreferrer">{c.glpi_ticket_id}</a> : c.glpi_ticket_id}

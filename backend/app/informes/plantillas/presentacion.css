@@ -258,3 +258,21 @@ body.pdf .divider .bg { transform: none; }
 body.pdf .mapa .flujo { stroke-dasharray: none; opacity: .75; }
 body.pdf .mapa .tes, body.pdf .mapa .lin { transition: none; }
 body.pdf #controls, body.pdf #progress, body.pdf #index, body.pdf #notes, body.pdf #tip, body.pdf #luz, body.pdf .scanline, body.pdf canvas.red, body.pdf .zoom, body.pdf .tabs, body.pdf .pulso { display: none !important; }
+
+/* ---------- modo día (botón del sol o tecla T): la interactiva en fondo claro ---------- */
+body.claro {
+  --bg: #f6f7fb; --panel: rgba(16,24,48,.035); --panel2: rgba(16,24,48,.065); --line: rgba(16,24,48,.10); --line2: rgba(16,24,48,.18);
+  --text: #121726; --muted: #4a5270; --dim: #6b7390;
+  --red: #e4003a; --red-soft: rgba(228,0,58,.10); --blue: #3563e9; --blue-soft: rgba(53,99,233,.10);
+  --c: #e0123f; --h: #e86100; --m: #d99a00; --l: #1a9e66;
+}
+html:has(body.claro), body.claro, body.claro #viewport { background: #dfe2ea; }
+body.claro .pill.r { color: #c8002f; } body.claro .pill.bl { color: #2f5bd3; }
+body.claro .cover .bg::after { background: linear-gradient(90deg, var(--bg) 0%, rgba(246,247,251,.9) 25%, rgba(246,247,251,.45) 60%, rgba(246,247,251,.7) 100%), linear-gradient(0deg, var(--bg), transparent 35%); }
+body.claro .divider .bg::after { background: linear-gradient(90deg, rgba(246,247,251,.97) 0%, rgba(246,247,251,.86) 45%, rgba(246,247,251,.45) 100%); }
+body.claro .closing .bg::after { background: linear-gradient(90deg, rgba(246,247,251,.96) 0%, rgba(246,247,251,.84) 50%, rgba(246,247,251,.4) 100%); }
+body.claro .divider .big { color: var(--bg); }
+body.claro .agenda .n { color: #fff; -webkit-text-stroke-color: #9aa1b5; }
+body.claro .ring circle:first-child { stroke: rgba(16,24,48,.08); }
+body.claro .tabs button { background: #fff; } body.claro .tabs button.on { color: #fff; background: #121726; }
+body.claro #notes { color: #cfd6e6; }

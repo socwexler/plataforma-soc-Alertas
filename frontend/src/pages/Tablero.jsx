@@ -3,10 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { BarraCelda, BarrasH, COLOR_CRIT, Columnas, Leyenda, SERIE } from "../components/Graficos";
 import { Campo, Crit, MsgError } from "../components/Ui";
-import { duracion, ESTADOS, ESTADOS_GLPI, fechaHora, infoGlpi, num } from "../util";
+import { duracion, ESTADOS, ESTADOS_GLPI, fechaHora, infoGlpi, isoCol, num } from "../util";
 
 const SERIES_CRIT = ["Baja", "Media", "Alta", "Crítica"].map((c) => ({ clave: c, nombre: c, color: COLOR_CRIT[c] }));
-const iso = (d) => d.toISOString().slice(0, 10);
+const iso = isoCol;   // fecha de Colombia: después de las 7 p. m. la de UTC ya es mañana
 const pct = (a, b) => (b ? `${Math.round((a / b) * 100)}%` : "—");
 
 function rangos() {
@@ -130,7 +130,8 @@ export default function Tablero() {
           </div>
 
           <div className="panel">
-            <h2>Cumplimiento del SLA por criticidad</h2>
+            <div className="cabecera" style={{ marginBottom: 8 }}><h2 style={{ margin: 0 }}>Cumplimiento del SLA por criticidad</h2>
+              <button className="btn chico" onClick={() => { const p = new URLSearchParams(Object.entries(f).filter(([, v]) => v)); nav(`/sla?${p}`); }}>Ver por analista</button></div>
             <div className="tabla-scroll">
               <table className="tabla">
                 <thead><tr><th>Criticidad</th><th className="num">Objetivo</th><th className="num">Casos</th><th className="num">Dentro</th><th className="num">Fuera</th>

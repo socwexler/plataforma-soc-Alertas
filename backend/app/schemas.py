@@ -136,7 +136,7 @@ class CasoIn(BaseModel):
     reporting_ip: str | None = None
     log_evento: str | None = None
     fecha_evento: datetime
-    fecha_reporte: datetime | None = None  # si no viene, se usa la hora actual
+    fecha_reporte: datetime | None = None  # al crear se ignora (hora del servidor); al editar solo la corrige un revisor
     estado: Estado = "SIN_RETRO"
     acciones_cliente: str | None = None
     glpi_ticket_id: int | None = None
@@ -217,6 +217,7 @@ class CasoListaOut(ORM):
 
 
 class CasoOut(CasoListaOut):
+    cliente_id: int   # el formulario de edición lo necesita para mostrar el cliente elegido
     caso_uso_id: int | None
     tecnica: str | None
     tactica_id: str | None

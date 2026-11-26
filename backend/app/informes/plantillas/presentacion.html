@@ -13,13 +13,14 @@
 {{ rec.css }}
 </style>
 </head>
-<body{% if pdf %} class="pdf"{% endif %}>
+<body class="{% if pdf %}pdf{% endif %}{% if tema == 'claro' %} claro{% endif %}">
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
 <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
 <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
 <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
 <symbol id="i-full" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></symbol>
 <symbol id="i-note" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+<symbol id="i-sol" viewBox="0 0 24 24"><path d="M12 7.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol><symbol id="i-luna" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></symbol>
 <symbol id="i-pdf" viewBox="0 0 24 24"><path d="M12 3v12m0 0-4-4m4 4 4-4M4 19h16"/></symbol>
 <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 5 3.4 9.3 8 11 4.6-1.7 8-6 8-11V5zM12 8v5m0 3h.01"/></symbol>
 </svg>
@@ -198,7 +199,7 @@
 
 <div id="controls">
   {% if informe_id %}<button id="b-pdf" title="Exportar a PDF"><svg class="i"><use href="#i-pdf"/></svg></button>{% endif %}
-  <button id="b-notes" title="Notas del presentador (N)"><svg class="i"><use href="#i-note"/></svg></button>
+  <button id="b-tema" title="Modo día o noche (T)"><svg class="i"><use href="#i-luna"/></svg></button><button id="b-notes" title="Notas del presentador (N)"><svg class="i"><use href="#i-note"/></svg></button>
   <button id="b-index" title="Índice (I)"><svg class="i"><use href="#i-list"/></svg></button>
   <button id="b-full" title="Pantalla completa (F)"><svg class="i"><use href="#i-full"/></svg></button>
   <button id="b-prev" title="Anterior (←)"><svg class="i"><use href="#i-left"/></svg></button>

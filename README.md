@@ -122,6 +122,14 @@ GLPI_USER_TOKEN=user
 
 La entidad 999 simula un error de permisos.
 
+## Hora de reporte al cliente
+
+Es **automática**: la pone el servidor al guardar el caso, en hora de Colombia, y el analista no la escribe. La fecha de bitácora sale de esa hora. Al editar se conserva; solo un N2 o superior puede corregirla, y la corrección queda en el seguimiento con la hora anterior y la nueva. La hora del evento no puede ser posterior a la del reporte. Todas las fechas de la pantalla se muestran y se escriben en hora de Colombia, aunque el equipo tenga otra zona horaria. Los casos importados conservan las horas de la bitácora.
+
+## Apariencia
+
+Mismo diseño de CYWEX (gestión de vulnerabilidades). Cada usuario elige **modo día o noche** abajo en el menú; queda guardado en su navegador y, si no elige, se usa el del sistema. Las presentaciones también tienen su botón de modo (sol o luna, o la tecla **T**); la ejecutiva empieza en día y la interactiva en noche, y el PDF se descarga en el modo que se está viendo.
+
 ## Tablero
 
 En el menú **Tablero** hay filtros de periodo (con accesos rápidos: hoy, 7 días, 30 días, este mes, mes anterior, 90 días), cliente, servicio y analista. Muestra:
@@ -134,7 +142,18 @@ En el menú **Tablero** hay filtros de periodo (con accesos rápidos: hoy, 7 dí
   - Porcentaje dentro del SLA de su criticidad.
   - Tickets GLPI abiertos.
 - **Casos por día y criticidad:** gráfico con detalle al pasar el mouse y vista de tabla.
-- **Cumplimiento del SLA por criticidad:** objetivo, casos dentro y fuera, porcentaje y tiempo mediano.
+- **Cumplimiento del SLA por criticidad:** objetivo, casos dentro y fuera, porcentaje y tiempo mediano. *Ver por analista* abre la sección SLA con los mismos filtros.
+
+### SLA por analista
+
+Menú **SLA por analista** (los mismos roles que el tablero). Con los filtros de periodo, cliente, servicio y analista muestra:
+
+- Cumplimiento, casos fuera, tiempo mediano y el tiempo en que se reporta el 90 % de los casos.
+- Por criticidad: objetivo, dentro, fuera, mediana, 90 % y máximo.
+- Por analista: cumplimiento total y por criticidad, primero quien tiene más casos fuera. Al hacer clic se filtra todo a ese analista.
+- Evolución por día (hasta 5 semanas) o por semana.
+- Casos fuera del SLA, primero los que más se pasaron (hasta 100), con enlace al caso.
+
 - **Tabla por analista:** casos, alta o crítica, con y sin retroalimentación, tiempo mediano, % SLA, tickets y último caso.
 - **Distribuciones:**
   - Estado de los casos y de los tickets GLPI.

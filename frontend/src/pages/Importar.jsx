@@ -187,7 +187,7 @@ export default function Importar() {
           <h3 style={{ marginTop: 18 }}>Modo</h3>
           <div className="grid g3">
             {Object.entries(MODOS).map(([k, m]) => (
-              <label key={k} className="panel" style={{ margin: 0, cursor: "pointer", borderColor: modo === k ? "var(--acento)" : undefined, boxShadow: modo === k ? "0 0 0 2px rgba(31,158,137,.25)" : undefined }}>
+              <label key={k} className="panel" style={{ margin: 0, cursor: "pointer", borderColor: modo === k ? "var(--acento)" : undefined, boxShadow: modo === k ? "0 0 0 3px var(--acento-suave)" : undefined }}>
                 <span className="check"><input type="radio" name="modo" checked={modo === k} onChange={() => setModo(k)} /> <b>{m.titulo}</b></span>
                 <p className="tenue" style={{ margin: "6px 0 0" }}>{m.texto}</p>
               </label>

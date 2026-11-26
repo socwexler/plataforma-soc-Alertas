@@ -10,7 +10,7 @@ from ..config import settings
 from ..db import get_db
 from ..models import VIGENTE, Caso, Cliente, Usuario
 from ..security import requiere
-from ..sla import CON_TIEMPO, MINUTOS, dentro
+from ..sla import CON_TIEMPO, MINUTOS, dentro, objetivo
 
 router = APIRouter(prefix="/api/tablero", tags=["tablero"])
 TZ = ZoneInfo(settings.zona_horaria)
@@ -141,3 +141,84 @@ def tablero(
         "por_estado": por_estado, "por_hora": por_hora, "tiempos": tiempos, "top_alertas": top_alertas,
         "por_cliente": por_cliente, "glpi_estados": glpi_estados,
     }
+
+
+# ---------------------------------------------------------------- SLA por analista
+P90 = func.percentile_cont(0.9).within_group(MINUTOS).filter(CON_TIEMPO)
+
+
+def _rango(desde: date | None, hasta: date | None) -> tuple[date, date]:
+    hasta = hasta or datetime.now(TZ).date()
+    desde = desde or (hasta - timedelta(days=29))
+    if desde > hasta:
+        raise HTTPException(422, "La fecha inicial es posterior a la final")
+    if (hasta - desde).days > 400:
+        raise HTTPException(422, "El rango máximo es de 400 días")
+    return desde, hasta
+
+
+@router.get("/sla")
+def sla(
+    desde: date | None = None,
+    hasta: date | None = None,
+    cliente_id: int | None = None,
+    servicio: str | None = None,
+    analista_id: int | None = None,
+    db: Session = Depends(get_db),
+    _=Depends(requiere("tablero.ver")),
+):
+    """Cumplimiento del SLA de notificación por analista y criticidad, su evolución y los casos fuera del objetivo."""
+    desde, hasta = _rango(desde, hasta)
+    F = [VIGENTE, Caso.fecha_bitacora >= desde, Caso.fecha_bitacora <= hasta]
+    if cliente_id:
+        F.append(Caso.cliente_id == cliente_id)
+    if servicio:
+        F.append(Caso.servicio == servicio)
+    G = [*F, Caso.analista_id == analista_id] if analista_id else F   # el detalle; la tabla de analistas usa F
+    ok, objetivos = dentro(), settings.sla_objetivos
+    crit = func.coalesce(Caso.criticidad, "Media")   # sin criticidad cuenta como Media, igual que su objetivo
+    medidas = (func.count(), _contar(CON_TIEMPO), _contar(ok), MEDIANA, P90, func.max(MINUTOS).filter(CON_TIEMPO))
+
+    def fila(r, i=0):
+        return {"total": r[i], "con_tiempo": r[i + 1], "dentro": r[i + 2], "mediana_minutos": _redondear(r[i + 3]),
+                "p90_minutos": _redondear(r[i + 4]), "max_minutos": _redondear(r[i + 5])}
+
+    resumen = fila(db.execute(select(*medidas).where(*G)).one())
+
+    # analistas × criticidad
+    analistas: dict[int, dict] = {}
+    for r in db.execute(select(Usuario.id, Usuario.nombre, crit, *medidas)
+                        .join(Caso.analista).where(*F).group_by(Usuario.id, Usuario.nombre, crit)):
+        a = analistas.setdefault(r[0], {"id": r[0], "nombre": r[1], "por_criticidad": {}})
+        a["por_criticidad"][r[2]] = fila(r, 3)
+    for r in db.execute(select(Usuario.id, *medidas).join(Caso.analista).where(*F).group_by(Usuario.id)):
+        analistas[r[0]].update(fila(r, 1))
+    por_analista = sorted(analistas.values(), key=lambda a: (-(a["con_tiempo"] - a["dentro"]), -a["con_tiempo"]))
+
+    por_criticidad = [{"criticidad": c, "objetivo": m, **fila(r)} for c, m in objetivos.items()
+                      for r in [db.execute(select(*medidas).where(*G, crit == c)).one()]]
+
+    # evolución: por día hasta 5 semanas, si no por semana (lunes)
+    dias = (hasta - desde).days + 1
+    unidad = "dia" if dias <= 35 else "semana"
+    clave = Caso.fecha_bitacora if unidad == "dia" else func.date_trunc("week", Caso.fecha_bitacora)
+    evol = {r[0].date() if isinstance(r[0], datetime) else r[0]: r for r in
+            db.execute(select(clave, _contar(CON_TIEMPO), _contar(ok)).where(*G).group_by(clave))}
+    inicio = desde if unidad == "dia" else desde - timedelta(days=desde.weekday())
+    paso = timedelta(days=1 if unidad == "dia" else 7)
+    evolucion, d = [], inicio
+    while d <= hasta:
+        r = evol.get(d)
+        evolucion.append({"desde": d.isoformat(), "con_tiempo": r[1] if r else 0, "dentro": r[2] if r else 0})
+        d += paso
+
+    # casos fuera del objetivo, primero los que más se pasaron
+    exceso = MINUTOS - objetivo()
+    fuera = [{"id": c.id, "numero": c.numero, "cliente": c.cliente.codigo, "analista": c.analista.nombre if c.analista else None,
+              "criticidad": c.criticidad, "alerta": c.alerta, "fecha_evento": c.fecha_evento, "fecha_reporte": c.fecha_reporte,
+              "minutos": round(m, 2), "objetivo": c.sla_minutos, "exceso_minutos": round(x, 2)}
+             for c, m, x in db.execute(select(Caso, MINUTOS, exceso).where(*G, CON_TIEMPO, exceso > 0)
+                                       .order_by(exceso.desc()).limit(100)).unique()]
+    return {"desde": desde, "hasta": hasta, "objetivos": objetivos, "resumen": resumen, "por_criticidad": por_criticidad,
+            "por_analista": por_analista, "unidad": unidad, "evolucion": evolucion, "fuera": fuera,
+            "total_fuera": resumen["con_tiempo"] - resumen["dentro"]}

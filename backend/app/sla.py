@@ -11,10 +11,15 @@ MINUTOS = func.extract("epoch", Caso.fecha_reporte - Caso.fecha_evento) / 60
 CON_TIEMPO = Caso.fecha_reporte.is_not(None) & Caso.fecha_evento.is_not(None)
 
 
+def objetivo():
+    """Expresión SQL: minutos objetivo según la criticidad del caso (sin criticidad, el de Media)."""
+    o = settings.sla_objetivos
+    return case(*[(Caso.criticidad == c, m) for c, m in o.items()], else_=o["Media"])
+
+
 def dentro():
     """Condición SQL: el caso tiene tiempos y cumple el objetivo de su criticidad."""
-    o = settings.sla_objetivos
-    return CON_TIEMPO & (MINUTOS <= case(*[(Caso.criticidad == c, m) for c, m in o.items()], else_=o["Media"]))
+    return CON_TIEMPO & (MINUTOS <= objetivo())
 
 
 def fuera():

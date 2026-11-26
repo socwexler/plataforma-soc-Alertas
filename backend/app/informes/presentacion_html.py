@@ -67,7 +67,7 @@ def _mapa(informe) -> dict:
     return m
 
 
-def html(informe, metricas: dict, informe_id: int | None = None, pdf: bool = False, estilo: str = "interactiva") -> str:
+def html(informe, metricas: dict, informe_id: int | None = None, pdf: bool = False, estilo: str = "interactiva", tema: str | None = None) -> str:
     ctx = armar(informe, metricas, svg=False)
     cl = informe.cliente
     imagenes = {x.id: x for x in informe.imagenes}
@@ -84,12 +84,12 @@ def html(informe, metricas: dict, informe_id: int | None = None, pdf: bool = Fal
     }
     extra = ejecutivo.armar(informe, ctx) if ejec else {}
     return _env.get_template("ejecutiva.html" if ejec else "presentacion.html").render(
-        **ctx, **extra, rec=recursos(), mapa=mapa, datos=datos, informe_id=informe_id, pdf=pdf,
+        **ctx, **extra, rec=recursos(), mapa=mapa, datos=datos, informe_id=informe_id, pdf=pdf, tema=tema,
         # En el PDF no hay pestañas: un mapa por sentido
         modos_mapa=con if pdf else (["ambos"] if len(con) == 2 else con),
         crits=list(reversed(CRITS)), crits_sin=[*reversed(CRITS), "Sin"],
         logo=Markup(_uri(cl.logo, cl.logo_mime)) if cl.tiene_logo else None, logo_claro=cl.logo_claro)
 
 
-def pdf(informe, metricas: dict, estilo: str = "interactiva") -> bytes:
-    return html_a_pdf(html(informe, metricas, pdf=True, estilo=estilo), 20, 11.25)
+def pdf(informe, metricas: dict, estilo: str = "interactiva", tema: str | None = None) -> bytes:
+    return html_a_pdf(html(informe, metricas, pdf=True, estilo=estilo, tema=tema), 20, 11.25)

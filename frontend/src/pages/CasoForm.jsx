@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api";
 import { imagenesPegadas, peso, subirAdjuntos, TIPOS } from "../components/Adjuntos";
 import { Campo, Combo, Crit, MsgError } from "../components/Ui";
+import { useAuth } from "../auth";
 import { aInputLocal, CRITICIDADES, deInputLocal, ESTADOS, fechaHora, infoGlpi } from "../util";
 
 const VACIO = {
@@ -36,6 +37,8 @@ export default function CasoForm() {
   const [glpi, setGlpi] = useState({ activo: false });
   const [crearTicket, setCrearTicket] = useState(false);
   const [original, setOriginal] = useState(null);
+  const { puede } = useAuth();
+  const [reporteOriginal, setReporteOriginal] = useState(null);   // {texto del campo, ISO guardado}
   const [archivos, setArchivos] = useState([]);  // [{archivo, tipo}] se suben después de crear el caso
   const agregar = (lista, tipo) => {
     const nuevos = [...lista].map((archivo) => ({ archivo, tipo }));  // copia: al limpiar el <input> la lista se vacía
@@ -55,6 +58,7 @@ export default function CasoForm() {
         Object.keys(VACIO).forEach((k) => { x[k] = c[k] ?? VACIO[k]; });
         x.fecha_evento = aInputLocal(c.fecha_evento);
         x.fecha_reporte = aInputLocal(c.fecha_reporte);
+        setReporteOriginal({ texto: x.fecha_reporte, iso: c.fecha_reporte });
         x.glpi_ticket_id = c.glpi_ticket_id ?? "";
         setF(x);
         if (c.anulado_en) { nav(`/casos/${id}`, { replace: true }); return; }
@@ -117,7 +121,8 @@ export default function CasoForm() {
       caso_uso_id: alertaLibre ? null : f.caso_uso_id,
       tactica_id: f.tactica_id || null,
       fecha_evento: deInputLocal(f.fecha_evento),
-      fecha_reporte: deInputLocal(f.fecha_reporte),
+      // solo se envía si un revisor la corrigió; al crear la pone el servidor
+      fecha_reporte: editando && reporteOriginal && f.fecha_reporte !== reporteOriginal.texto ? deInputLocal(f.fecha_reporte) : null,
       glpi_ticket_id: f.glpi_ticket_id ? Number(f.glpi_ticket_id) : null,
     };
     Object.keys(datos).forEach((k) => { if (datos[k] === "") datos[k] = null; });
@@ -219,12 +224,18 @@ export default function CasoForm() {
       <div className="panel">
         <h2>2. Evento</h2>
         <div className="grid g4">
-          <Campo etiqueta="Fecha y hora del evento en el SIEM">
+          <Campo etiqueta="Fecha y hora del evento en el SIEM" ayuda="hora de Colombia">
             <input type="datetime-local" value={f.fecha_evento} onChange={set("fecha_evento")} required />
           </Campo>
-          <Campo etiqueta="Hora de reporte al cliente" ayuda={editando ? undefined : "vacío = ahora"}>
-            <input type="datetime-local" value={f.fecha_reporte} onChange={set("fecha_reporte")} />
-          </Campo>
+          {editando && puede("casos.revisar") ? (
+            <Campo etiqueta="Hora de reporte al cliente" ayuda="solo para corregir; queda en el seguimiento">
+              <input type="datetime-local" value={f.fecha_reporte} onChange={set("fecha_reporte")} />
+            </Campo>
+          ) : (
+            <Campo etiqueta="Hora de reporte al cliente" ayuda="automática">
+              <input value={editando ? fechaHora(reporteOriginal?.iso) : "Se registra al guardar"} disabled title="Hora de Colombia en que se guarda el caso" />
+            </Campo>
+          )}
           <Campo etiqueta="Reporting IP / fuente"><input value={f.reporting_ip || ""} onChange={set("reporting_ip")} placeholder="172.20.0.10" /></Campo>
           <Campo etiqueta="Geolocalización"><input value={f.geolocalizacion || ""} onChange={set("geolocalizacion")} placeholder="N/A, Colombia, Estados Unidos…" /></Campo>
           <Campo etiqueta="Análisis de seguridad" className="span-todo">
