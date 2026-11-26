@@ -6,11 +6,18 @@ import base64
 import json
 import socketserver
 import threading
+from datetime import datetime, timedelta, timezone
+from urllib.parse import parse_qs, unquote, urlsplit
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 CORREOS: list[dict] = []
 PETICIONES: list[dict] = []
 ESTADO = {"smtp": True, "glpi": True}
+# Tickets «del SIEM» en GLPI: /_ticket/<id>/<entidad>/<urgencia>/<estado>/<minutos atrás>/<título>
+TICKETS: dict[int, dict] = {}
+CONTENIDO = ("&lt;p&gt;FortiSIEM: Fuerza bruta en VPN&lt;br&gt;IP origen: 203.0.113.7&lt;/p&gt;"
+             "&lt;table&gt;&lt;tr&gt;&lt;td&gt;Usuario&lt;/td&gt;&lt;td&gt;jperez&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;"
+             "&lt;script&gt;alert(1)&lt;/script&gt;&lt;p&gt;Acción: &amp;quot;Permitida&amp;quot;&lt;/p&gt;")
 
 
 class Web(BaseHTTPRequestHandler):
@@ -27,7 +34,8 @@ class Web(BaseHTTPRequestHandler):
         pass
 
     def do_POST(self):
-        self.rfile.read(int(self.headers.get("Content-Length") or 0))
+        cuerpo = self.rfile.read(int(self.headers.get("Content-Length") or 0))
+        PETICIONES.append({"ruta": self.path, "metodo": "POST", "cuerpo": cuerpo.decode("utf-8", "replace")})
         self._r(400 if not ESTADO["glpi"] else 201, b'["ERROR","falla simulada"]' if not ESTADO["glpi"] else b'{"id": 7001}')
 
     def do_GET(self):
@@ -38,6 +46,16 @@ class Web(BaseHTTPRequestHandler):
             _, _, k, v = p.split("/")
             ESTADO[k] = v == "si"
             return self._r(200)
+        if p.startswith("/_ticket/"):
+            _, _, tid, ent, urg, est, atras, titulo = p.split("/", 7)
+            fecha = (datetime.now(timezone(timedelta(hours=-5))) - timedelta(minutes=int(atras))).strftime("%Y-%m-%d %H:%M:%S")
+            TICKETS[int(tid)] = {"id": int(tid), "name": unquote(titulo), "content": CONTENIDO, "entities_id": int(ent),
+                                 "urgency": int(urg), "status": int(est), "date": fecha}
+            return self._r(200)
+        if p.startswith("/_estado/"):
+            _, _, tid, est = p.split("/")
+            TICKETS[int(tid)]["status"] = int(est)
+            return self._r(200)
         PETICIONES.append({"ruta": p, "auth": h.get("Authorization"), "apikey": h.get("x-apikey"), "app": h.get("App-Token")})
         if p.endswith("/initSession"):
             if h.get("App-Token") != "app-bueno" or h.get("Authorization") != "user_token user-bueno":
@@ -45,7 +63,14 @@ class Web(BaseHTTPRequestHandler):
             return self._r(200, b'{"session_token": "s"}')
         if p.endswith("/getFullSession"):
             return self._r(200, b'{"session": {"glpiname": "soc.api", "glpiactive_entity_name": "Raiz"}}')
+        if urlsplit(p).path.endswith("/search/Ticket"):
+            q = parse_qs(urlsplit(p).query)
+            abiertos = [t for t in sorted(TICKETS) if TICKETS[t]["status"] < 5] if q.get("criteria[0][value]") == ["notold"] else sorted(TICKETS)
+            return self._r(200, json.dumps({"totalcount": len(abiertos), "count": len(abiertos), "data": [{"2": t} for t in abiertos]}).encode())
         if "/Ticket/" in p:
+            tid = p.rsplit("/", 1)[-1]
+            if tid.isdigit() and int(tid) in TICKETS:
+                return self._r(200, json.dumps(TICKETS[int(tid)]).encode())
             return self._r(200, b'{"status": 2}')
         if p.startswith("/phoenix/rest/config/Domain"):
             return self._r(200 if h.get("Authorization") == "Basic " + base64.b64encode(b"super/lector:forti-buena").decode() else 401, b"<r/>", "text/xml")

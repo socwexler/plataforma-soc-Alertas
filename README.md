@@ -12,6 +12,7 @@ Reemplaza la bitácora en Excel por una aplicación web con base de datos.
 
 **Fase 2:**
 - Tickets en GLPI 10: se crean al registrar el caso, con reintento, seguimientos, solución al cerrar y sincronización del estado.
+- **Alertas por tratar:** los tickets que el SIEM crea en GLPI por correo llegan a una bandeja; al reportarlos se crea el caso con el mismo ticket.
 - Tablero: casos por analista, criticidad por día, estados, tiempos de reporte y SLA, carga por hora, alertas y clientes.
 - Migraciones de esquema con Alembic: las actualizaciones no borran datos.
 
@@ -103,6 +104,23 @@ GLPI se usa para que el cliente tenga un número de ticket y para hacerle seguim
 | Comentario con *Publicar en GLPI* | Se agrega como seguimiento del ticket. |
 | El caso pasa a **Cerrado** | Se registra la solución en el ticket, con las acciones del cliente (`GLPI_RESOLVER_AL_CERRAR`). |
 | Cada `GLPI_SYNC_MINUTOS` | Se consulta el estado de los tickets abiertos de los últimos 90 días. Los cambios quedan en el historial del caso, y el estado se ve en la lista, el detalle y el tablero. |
+
+### Alertas por tratar (tickets que crea el SIEM)
+
+El SIEM envía un correo al buzón de GLPI y GLPI crea el ticket. **Toda alerta que llega así se reporta al cliente.** La plataforma la trae a la bandeja **Alertas por tratar** y el analista la reporta desde allí. El flujo manual sigue igual: el N1 registra el caso en *Nuevo caso* y, si quiere, crea el ticket. Sirve para los clientes que aún no están afinados en el SIEM.
+
+| Estado | Qué significa |
+|---|---|
+| **Por reportar** | Llegó a GLPI y nadie la ha tomado. El menú muestra cuántas hay. |
+| **En gestión** | Un analista la tomó; los demás ven su nombre. Solo quien la tomó o un revisor (N2 o superior) pueden reportarla o liberarla. |
+| **Reportada** | Tiene su caso WX con **el mismo ticket**: no se crea otro. El caso sigue su ciclo normal: correo, escalamiento, cierre y solución en GLPI. |
+| **Cerrada en GLPI** | La cerraron en GLPI sin caso; sale de la bandeja. |
+
+- **Cómo se reconocen:** en *Configuración → GLPI*, active *Traer las alertas del SIEM* e indique al menos un criterio. Puede ser el ID del origen de la solicitud (p. ej. *Correo electrónico*), el ID de la categoría o un texto del título (p. ej. *FortiSIEM*). Se traen los tickets abiertos de los últimos `GLPI_ALERTAS_DIAS` días, cada `GLPI_ALERTAS_MINUTOS` minutos o con **Buscar ahora**. Los tickets que ya tienen caso, incluidos los que crea la propia plataforma, no se traen.
+- **Cliente:** el que tiene en *Clientes* la misma entidad de GLPI. Si ninguno la tiene, la alerta aparece *Sin cliente* y el analista lo elige al reportar. Al asignar después la entidad, la bandeja se actualiza.
+- **Al reportar:** se abre el formulario del caso con el cliente, el título, la criticidad (según la urgencia del ticket: 5 Crítica, 4 Alta, 3 Media, 1–2 Baja) y la hora de llegada a GLPI como hora del evento. El analista la puede corregir con la del SIEM. El contenido del correo del SIEM se ve como texto, sin HTML, con el botón *Usar como log del evento*. Si el título coincide con un caso de uso, se propone su plantilla. Al guardar, el ticket recibe un seguimiento con el número del caso.
+- **SLA:** el de notificación por criticidad, desde la hora del evento hasta el reporte, igual que los demás casos. En la bandeja, el tiempo de espera se pone en rojo al superar el SLA. Si una alerta lo supera sin que nadie la tome, se envía un aviso interno (una vez; `aviso_alerta_sin_tomar`).
+- Digitar en un caso manual el ticket de una alerta pendiente la deja reportada con ese caso. El ticket de un caso que vino de la bandeja no se cambia.
 
 ### Pruebas sin GLPI real
 
@@ -316,8 +334,8 @@ Menú *Configuración* (Líder SOC y Administrador). Lo guardado allí reemplaza
 - **SLA de notificación por criticidad** (en *General*): minutos entre la alerta del SIEM y el reporte al cliente. Predeterminado: crítica 35, alta 45, media 120 y baja 240. Se aplica también a los casos ya registrados; los informes finales no cambian. Una criticidad no puede tener un plazo mayor que la siguiente menos grave. El antiguo `SLA_MINUTOS` del `.env` ya no se usa.
 - **General:** duración de la sesión, límites de archivos, fondo del mapa, dirección de la plataforma.
 - **Correo al cliente:** copias fijas, dominio propio, plazo, marca TLP. La alerta sigue siendo un borrador: no se envía.
-- **Avisos internos:** correo SMTP **solo al dominio propio** para casos por revisar (agrupados), devueltos (al analista) y fallas de GLPI. Llevan número, cliente, alerta y criticidad. Si el correo falla, el caso se guarda igual y se reintenta hasta 6 veces; a las 24 horas se descarta.
-- **GLPI** y **FortiSIEM:** conexión y prueba. De FortiSIEM solo se prueba; los anexos se cargan por archivo.
+- **Avisos internos:** correo SMTP **solo al dominio propio** para casos por revisar (agrupados), devueltos (al analista), fallas de GLPI y alertas de GLPI que superan su SLA sin que nadie las tome. Llevan número, cliente, alerta y criticidad. Si el correo falla, el caso se guarda igual y se reintenta hasta 6 veces; a las 24 horas se descarta.
+- **GLPI** y **FortiSIEM:** conexión y prueba. En GLPI también se activa la bandeja *Alertas por tratar* y sus criterios. De FortiSIEM solo se prueba; los anexos se cargan por archivo.
 - **Otras APIs:** registro y prueba de conexiones; usarlas requiere desarrollo.
 - **Claves de acceso:** para que otro sistema consulte `GET /api/externo/casos` y `/api/externo/resumen` con la cabecera `X-Api-Key`. Solo lectura, con vencimiento, por cliente si se quiere y revocables. No entregan análisis ni registros.
 

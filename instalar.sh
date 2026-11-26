@@ -69,7 +69,7 @@ for _ in $(seq 1 60); do curl -fs -o /dev/null "http://127.0.0.1:${PUERTO}/api/s
 if curl -fs "http://127.0.0.1:${PUERTO}/api/salud" >/dev/null; then ok "La aplicación responde"; else falla "La aplicación no responde"; fi
 sql() { docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "$1"' _ "$1" 2>/dev/null; }
 VER=$(sql 'select version_num from alembic_version' || true)
-if [ "$VER" = "0013" ]; then ok "Esquema de base de datos en 0013"; else falla "Esquema: '${VER}' (se esperaba 0013)"; fi
+if [ "$VER" = "0014" ]; then ok "Esquema de base de datos en 0014"; else falla "Esquema: '${VER}' (se esperaba 0014)"; fi
 TAC=$(sql 'select count(*) from tacticas' || true)
 if [ "$TAC" = "14" ]; then ok "Catálogo MITRE cargado"; else falla "Catálogo MITRE: '${TAC}' (se esperaban 14)"; fi
 USU=$(grep '^ADMIN_USUARIO=' .env | cut -d= -f2)

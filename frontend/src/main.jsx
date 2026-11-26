@@ -16,6 +16,7 @@ import Configuracion from "./pages/Configuracion";
 import Importar from "./pages/Importar";
 import Tablero from "./pages/Tablero";
 import Sla from "./pages/Sla";
+import Alertas from "./pages/Alertas";
 import Informes from "./pages/Informes";
 import InformeEditor from "./pages/InformeEditor";
 import Presentacion from "./pages/Presentacion";
@@ -32,6 +33,7 @@ function Rutas() {
         <Route index element={puede("tablero.ver") ? <Inicio /> : <Navigate to={puede("casos.crear") ? "/casos/nuevo" : "/casos"} replace />} />
         {puede("tablero.ver") && <Route path="tablero" element={<Tablero />} />}
         {puede("tablero.ver") && <Route path="sla" element={<Sla />} />}
+        <Route path="alertas" element={<Alertas />} />
         <Route path="casos" element={<Casos />} />
         {puede("casos.crear") && <Route path="casos/nuevo" element={<CasoForm />} />}
         <Route path="casos/:id" element={<CasoDetalle />} />

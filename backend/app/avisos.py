@@ -66,6 +66,16 @@ def falla_glpi(db: Session, texto: str, c: Caso | None = None):
         _encolar(db, "glpi", f"Falla de GLPI{': ' + c.numero if c else ''}", (_linea(c) + "\n\n" if c else "") + f"Error: {texto[:400]}")
 
 
+def alerta_sin_tomar(db: Session, a, minutos: int):
+    """Alerta de GLPI que superó su SLA sin que nadie la tome (una sola vez por alerta)."""
+    if settings.aviso_alerta_sin_tomar:
+        enlace = f"\n  {settings.url_plataforma}/alertas" if settings.url_plataforma else ""
+        cliente = a.cliente.codigo if a.cliente else "sin cliente asignado"
+        _encolar(db, "alerta", f"Alerta sin tomar: ticket GLPI {a.glpi_ticket_id}",
+                 f"Ticket GLPI {a.glpi_ticket_id} · {cliente} · {a.criticidad or 'sin criticidad'} · {' '.join(a.titulo.split())[:160]}"
+                 f"\nLleva {minutos} minutos en «Alertas por tratar» sin que nadie la tome (SLA: {a.sla_minutos} minutos).{enlace}")
+
+
 # ------------------------------------------------------------------ enviar
 def _conexion() -> smtplib.SMTP:
     ctx = ssl.create_default_context()

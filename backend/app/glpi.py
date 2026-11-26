@@ -125,6 +125,8 @@ def crear_ticket_para_caso(db: Session, caso: Caso, autor: Usuario | None) -> in
         avisos.falla_glpi(db, str(e), caso)
         db.commit()
         raise
+    from .alertas import limpiar_ticket_propio   # aquí: alertas importa este módulo
+    limpiar_ticket_propio(db, tid)
     caso.glpi_ticket_id = tid
     caso.glpi_estado = 1
     caso.glpi_error = None

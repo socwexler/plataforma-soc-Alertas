@@ -46,4 +46,5 @@ prueba e2e_correo "$(w "$D/sal")"
 # simuladores de GLPI, FortiSIEM y correo en la red de la copia; no salen a Internet
 docker run -d --rm --name soc-prueba-sim --network soc-prueba_default --network-alias sim -v "$(w "$P/simuladores.py"):/s.py:ro" soc-prueba-api python -u //s.py >/dev/null && sleep 3
 MSYS_NO_PATHCONV=1 prueba e2e_config
+MSYS_NO_PATHCONV=1 prueba e2e_alertas            # bandeja de alertas de GLPI: después de e2e_config
 echo; if [ "$FALLOS" = 0 ]; then echo "PRUEBAS CORRECTAS"; else echo "PRUEBAS CON FALLOS: $FALLOS"; exit 1; fi

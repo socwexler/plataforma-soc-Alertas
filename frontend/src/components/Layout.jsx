@@ -10,6 +10,7 @@ import Isotipo from "./Isotipo";
 const I = {
   inicio: <><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></>,
   tablero: <><path d="M4 20V10M10 20V4M16 20v-7M21 20H3" /></>,
+  alertas: <><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></>,
   sla: <><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2.5 2.5M10 2h4M12 2v3" /></>,
   nuevo: <><rect x="3" y="3" width="18" height="18" rx="4" /><path d="M12 8v8M8 12h8" /></>,
   casos: <><path d="M9 6h11M9 12h11M9 18h11" /><circle cx="4.5" cy="6" r="1" /><circle cx="4.5" cy="12" r="1" /><circle cx="4.5" cy="18" r="1" /></>,
@@ -33,7 +34,7 @@ export default function Layout() {
   const { usuario, salir, puede } = useAuth();
   const [tema, alternarTema] = useTema();
   const { pathname, search } = useLocation();
-  const [pend, setPend] = useState({ por_revisar: 0, mis_observados: 0 });
+  const [pend, setPend] = useState({ por_revisar: 0, mis_observados: 0, alertas: 0 });
   const mios = `analista_id=${usuario.id}`;
   const en = (ruta, consulta) => pathname === ruta && search.replace(/^\?/, "") === consulta;
   const oscuro = tema === "oscuro";
@@ -53,7 +54,9 @@ export default function Layout() {
           {puede("tablero.ver") && <NavLink to="/" end><Icono n="inicio" />Inicio</NavLink>}
           {puede("tablero.ver") && <NavLink to="/tablero"><Icono n="tablero" />Tablero</NavLink>}
           {puede("tablero.ver") && <NavLink to="/sla"><Icono n="sla" />SLA por analista</NavLink>}
-          {puede("casos.crear") && <NavLink to="/casos/nuevo"><Icono n="nuevo" />Nuevo caso</NavLink>}
+          {puede("casos.crear") && <NavLink to="/alertas"><Icono n="alertas" />Alertas por tratar
+            {pend.alertas > 0 && <span className="cuenta" title="Tickets del SIEM que nadie ha tomado">{pend.alertas}</span>}</NavLink>}
+          {puede("casos.crear") && <NavLink to="/casos/nuevo" end><Icono n="nuevo" />Nuevo caso</NavLink>}
           <NavLink to="/casos" end className={() => (en("/casos", "") ? "active" : "")}><Icono n="casos" />Casos</NavLink>
           {puede("casos.crear") && !puede("casos.revisar") && (
             <NavLink to={`/casos?${mios}`} className={() => (en("/casos", mios) ? "active" : "")}><Icono n="mios" />Mis casos

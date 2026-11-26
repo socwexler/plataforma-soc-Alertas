@@ -330,3 +330,14 @@ tr.anulado td { color: var(--tenue); }
 @media (max-width: 900px) { .fila-act { grid-template-columns: 1fr 1fr; } }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* Alertas por tratar (tickets del SIEM en GLPI) */
+.al-POR_REPORTAR { background: var(--aviso-bg); color: var(--aviso-tx); border-color: var(--aviso-bd); }
+.al-EN_GESTION { background: var(--rev-bg); color: var(--rev-tx); border-color: var(--rev-bd); }
+.al-REPORTADA { background: var(--ok-bg); color: var(--ok-tx); border-color: var(--ok-bd); }
+.al-CERRADA_GLPI, .al-sin { background: var(--gris-bg); color: var(--gris-tx); border-color: var(--gris-bd); }
+.al-vencida { color: var(--alta-tx); font-weight: 700; }
+.al-riesgo { color: var(--aviso-tx); font-weight: 600; }
+.contenido-ticket { background: var(--log-bg); color: var(--log-tx); border-radius: 12px; padding: 14px; max-height: 340px; overflow: auto;
+  white-space: pre-wrap; overflow-wrap: anywhere; font-family: Consolas, "Cascadia Mono", monospace; font-size: 12.5px; margin: 8px 0 0; }
+.ficha-alerta { border-left: 4px solid var(--acento); }

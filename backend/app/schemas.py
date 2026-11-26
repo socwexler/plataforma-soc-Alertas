@@ -253,3 +253,29 @@ class PaginaCasos(Pagina):
 
 class PaginaCasosUso(Pagina):
     items: list[CasoUsoOut]
+
+
+# ---------- Alertas por tratar (tickets del SIEM en GLPI) ----------
+class AlertaOut(ORM):
+    id: int
+    glpi_ticket_id: int
+    glpi_estado: int | None
+    glpi_entidad_id: int | None
+    cliente_id: int | None
+    cliente: ClienteMini | None
+    titulo: str
+    criticidad: str | None
+    fecha_alerta: datetime
+    estado: Literal["POR_REPORTAR", "EN_GESTION", "REPORTADA", "CERRADA_GLPI"]
+    analista: UsuarioMini | None
+    tomada_en: datetime | None
+    caso_id: int | None
+    caso_numero: str | None
+    reportada_en: datetime | None
+    cerrada_en: datetime | None
+    sla_minutos: int
+    minutos: int | None = None      # en espera (pendientes) o hasta el reporte (reportadas)
+
+
+class AlertaDetalle(AlertaOut):
+    contenido: str | None

@@ -10,11 +10,11 @@ from sqlalchemy.orm import Session
 
 from ..config import settings
 from ..db import get_db
-from .. import adjuntos, avisos, correo, glpi, sla
+from .. import adjuntos, alertas, avisos, correo, glpi, sla
 from ..notificacion import construir_notificacion
 from ..auditoria import registrar
 from ..informes.periodos import etiqueta, ultimos
-from ..models import VIGENTE, Adjunto, Caso, CasoUso, Cliente, Consecutivo, Informe, Seguimiento, Usuario
+from ..models import VIGENTE, Adjunto, Alerta, Caso, CasoUso, Cliente, Consecutivo, Informe, Seguimiento, Usuario
 from ..schemas import AdjuntoIn, CasoIn, CasoListaOut, CasoOut, Estado, MotivoIn, PaginaCasos, RevisionIn, SeguimientoIn, SeguimientoOut
 from ..security import requiere, tiene, usuario_actual
 
@@ -137,6 +137,8 @@ def pendientes(db: Session = Depends(get_db), yo: Usuario = Depends(usuario_actu
     return {
         "por_revisar": contar(Caso.revision == "PENDIENTE") if tiene(yo, "casos.revisar") else 0,
         "mis_observados": contar(Caso.revision == "OBSERVADO", Caso.analista_id == yo.id),
+        "alertas": db.scalar(select(func.count()).select_from(Alerta).where(Alerta.estado == "POR_REPORTAR"))
+        if tiene(yo, "casos.crear") else 0,
     }
 
 
@@ -203,12 +205,29 @@ CONTENIDO = ("cliente_id", "caso_uso_id", "alerta", "criticidad", "tecnica", "ta
 
 
 @router.post("", response_model=CasoOut, status_code=201)
-def crear(datos: CasoIn, crear_ticket: bool = False, db: Session = Depends(get_db),
+def crear(datos: CasoIn, crear_ticket: bool = False, alerta_id: int | None = None, db: Session = Depends(get_db),
           yo: Usuario = Depends(requiere("casos.crear"))):
     """Registra el caso. Con crear_ticket=true también crea el ticket en GLPI; si GLPI falla,
-    el caso queda guardado igual y el error se devuelve en glpi_error para reintentar."""
+    el caso queda guardado igual y el error se devuelve en glpi_error para reintentar.
+    Con alerta_id reporta una alerta de «Alertas por tratar»: el caso lleva el ticket que ya creó el SIEM."""
     # La hora de reporte es la del servidor al guardar (no la escribe el analista)
     datos = datos.model_copy(update={"fecha_reporte": None})
+    alerta = None
+    if alerta_id is not None:
+        alerta = db.get(Alerta, alerta_id, with_for_update={"of": Alerta})
+        if not alerta:
+            raise HTTPException(404, "Alerta no encontrada")
+        if alerta.estado == "REPORTADA":
+            raise HTTPException(409, f"La alerta del ticket {alerta.glpi_ticket_id} ya se reportó en {alerta.caso_numero}")
+        if alerta.estado == "CERRADA_GLPI":
+            raise HTTPException(409, f"El ticket {alerta.glpi_ticket_id} se cerró en GLPI")
+        if alerta.estado == "EN_GESTION" and alerta.analista_id != yo.id and not tiene(yo, "casos.revisar"):
+            raise HTTPException(409, f"La está gestionando {alerta.analista.nombre if alerta.analista else 'otro analista'}")
+        datos = datos.model_copy(update={"glpi_ticket_id": alerta.glpi_ticket_id})
+        crear_ticket = False
+    elif datos.glpi_ticket_id and db.scalar(select(Alerta.id).where(Alerta.glpi_ticket_id == datos.glpi_ticket_id,
+                                                                     Alerta.estado.in_(("REPORTADA", "CERRADA_GLPI")))):
+        raise HTTPException(409, f"El ticket {datos.glpi_ticket_id} es de una alerta que ya se reportó o se cerró en GLPI")
     _validar(db, datos)
     ahora = datetime.now(timezone.utc)
     if datos.fecha_evento > ahora:
@@ -226,7 +245,18 @@ def crear(datos: CasoIn, crear_ticket: bool = False, db: Session = Depends(get_d
                        comentario=f"Caso registrado con estado {ETIQUETA_ESTADO[c.estado]}"))
     if c.revision == "PENDIENTE":
         avisos.por_revisar(db, c)
+    if alerta:
+        c.glpi_estado, c.glpi_sincronizado_en = alerta.glpi_estado, ahora
+        alertas.reportar(db, alerta, c, yo)
+    else:
+        alertas.vincular_ticket(db, c, yo)   # ticket digitado que era de una alerta pendiente
     db.commit()
+    if alerta and settings.glpi_activo:   # el ticket del SIEM queda con el número del caso
+        try:
+            glpi.publicar_seguimiento(c, f"Alerta registrada por el SOC de Wexler en el caso {c.numero} ({yo.nombre}) para el reporte al cliente.")
+        except glpi.ErrorGLPI as e:
+            c.glpi_error = f"No se pudo agregar el seguimiento en GLPI: {e}"
+            db.commit()
     if crear_ticket and settings.glpi_activo and not c.glpi_ticket_id:
         try:
             glpi.crear_ticket_para_caso(db, db.get(Caso, c.id), yo)
@@ -263,7 +293,10 @@ def editar(cid: int, datos: CasoIn, db: Session = Depends(get_db), yo: Usuario =
     if any(getattr(c, k) != v for k, v in contenido_anterior.items()):
         _revisar_de_nuevo(db, c, yo)
     if c.glpi_ticket_id != ticket_anterior:  # ticket digitado a mano: se vuelve a sincronizar
+        if db.scalar(select(Alerta.id).where(Alerta.caso_id == c.id)):
+            raise HTTPException(422, "El caso viene de «Alertas por tratar»: su ticket GLPI no se cambia")
         c.glpi_estado = c.glpi_error = c.glpi_sincronizado_en = None
+        alertas.vincular_ticket(db, c, yo)
     if c.estado != estado_anterior:
         db.add(Seguimiento(caso_id=c.id, autor_id=yo.id, autor_nombre=yo.nombre, tipo="estado",
                            comentario=f"Estado: {ETIQUETA_ESTADO[estado_anterior]} → {ETIQUETA_ESTADO[c.estado]}"))

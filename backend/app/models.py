@@ -252,6 +252,51 @@ class Adjunto(Base):
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+ESTADOS_ALERTA = ("POR_REPORTAR", "EN_GESTION", "REPORTADA", "CERRADA_GLPI")
+
+
+class Alerta(Base):
+    """Ticket que el SIEM crea en GLPI (por correo) y que se debe reportar al cliente («Alertas por tratar»).
+    Al reportarla se crea el caso WX con el mismo ticket: no se crea otro. CERRADA_GLPI: la cerraron en GLPI sin caso."""
+    __tablename__ = "alertas"
+    __table_args__ = (
+        CheckConstraint(_in("estado", ESTADOS_ALERTA), name="ck_alerta_estado"),
+        CheckConstraint(f"criticidad IS NULL OR {_in('criticidad', CRITICIDADES)}", name="ck_alerta_criticidad"),
+        CheckConstraint("estado <> 'REPORTADA' OR caso_id IS NOT NULL", name="ck_alerta_reportada"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    glpi_ticket_id: Mapped[int] = mapped_column(Integer, unique=True)
+    glpi_entidad_id: Mapped[int | None] = mapped_column(Integer)
+    glpi_estado: Mapped[int | None] = mapped_column(Integer)
+    # Cliente con esa entidad de GLPI (vacío si ninguno la tiene asignada: se elige al reportar)
+    cliente_id: Mapped[int | None] = mapped_column(ForeignKey("clientes.id"), index=True)
+    titulo: Mapped[str] = mapped_column(Text)
+    contenido: Mapped[str | None] = mapped_column(Text, deferred=True)   # texto del correo del SIEM, sin HTML
+    criticidad: Mapped[str | None] = mapped_column(String(10))
+    fecha_alerta: Mapped[datetime] = mapped_column(DateTime(timezone=True))   # apertura del ticket en GLPI
+    estado: Mapped[str] = mapped_column(String(14), default="POR_REPORTAR", index=True)
+    analista_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"))
+    tomada_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    caso_id: Mapped[int | None] = mapped_column(ForeignKey("casos.id"), unique=True)
+    reportada_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cerrada_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    avisada_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))   # aviso interno de «sin tomar»
+    importada_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    cliente: Mapped[Cliente | None] = relationship(lazy="joined")
+    analista: Mapped[Usuario | None] = relationship(lazy="joined")
+    caso: Mapped[Caso | None] = relationship()
+
+    @property
+    def caso_numero(self) -> str | None:
+        return self.caso.numero if self.caso_id and self.caso else None
+
+    @property
+    def sla_minutos(self) -> int:
+        return settings.sla_objetivos.get(self.criticidad or "Media", settings.sla_media)
+
+
 class Importacion(Base):
     """Historial de importaciones de bitácoras Excel (incluye simulaciones)."""
     __tablename__ = "importaciones"

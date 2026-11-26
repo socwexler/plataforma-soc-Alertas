@@ -28,6 +28,13 @@ class Settings(BaseSettings):
     glpi_resolver_al_cerrar: bool = True     # al cerrar el caso, se registra la solución en GLPI
     glpi_sync_minutos: int = 10              # cada cuánto se consulta el estado de los tickets abiertos
     glpi_url_tickets: str | None = None      # URL web para abrir un ticket; por defecto se deriva de glpi_url
+    # Alertas por tratar: tickets que el SIEM crea en GLPI por correo. Se reconocen por al menos uno de los criterios.
+    glpi_alertas_activo: bool = False
+    glpi_alertas_origen_id: int | None = None      # origen de la solicitud de esos tickets (p. ej. Correo electrónico)
+    glpi_alertas_categoria_id: int | None = None   # categoría ITIL de esos tickets
+    glpi_alertas_texto: str | None = None          # texto que lleva el título de esos tickets
+    glpi_alertas_minutos: int = 2                  # cada cuánto se buscan tickets nuevos
+    glpi_alertas_dias: int = 3                     # antigüedad máxima de los tickets que se traen
 
     # Correo de notificación al cliente
     correo_cc: str = "soc@wexler.com.co"                 # copia fija en todos los correos
@@ -60,6 +67,7 @@ class Settings(BaseSettings):
     avisos_agrupar_min: int = 15
     aviso_devuelto: bool = True
     aviso_glpi: bool = True
+    aviso_alerta_sin_tomar: bool = True       # una alerta de GLPI supera su SLA sin que nadie la tome
 
     # FortiSIEM (por ahora solo se prueba la conexión; los anexos se cargan por archivo)
     fortisiem_url: str | None = None

@@ -11,14 +11,14 @@ from .config import settings
 from .db import SessionLocal, engine
 from .models import Consecutivo, Tactica, Usuario
 from .normalizacion import TACTICAS
-from . import avisos, configuracion as cfg, glpi
-from .routers import auth, casos, casos_uso, clientes, configuracion, externo, glpi_api, importaciones, informes, tablero, usuarios
+from . import alertas, avisos, configuracion as cfg, glpi
+from .routers import alertas as alertas_api, auth, casos, casos_uso, clientes, configuracion, externo, glpi_api, importaciones, informes, tablero, usuarios
 from .security import hash_password
 
 log = logging.getLogger("uvicorn.error")
 
 app = FastAPI(title="Plataforma SOC/NOC Wexler", docs_url="/api/docs", openapi_url="/api/openapi.json")
-for r in (auth, usuarios, clientes, casos_uso, casos, importaciones, glpi_api, tablero, informes, configuracion, externo):
+for r in (alertas_api, auth, usuarios, clientes, casos_uso, casos, importaciones, glpi_api, tablero, informes, configuracion, externo):
     app.include_router(r.router)
 
 
@@ -64,6 +64,7 @@ def _startup():
     with SessionLocal() as db:
         cfg.cargar(db)
     glpi.iniciar_sincronizacion_periodica(_parar)
+    alertas.iniciar(_parar)
     avisos.iniciar(_parar)
 
 

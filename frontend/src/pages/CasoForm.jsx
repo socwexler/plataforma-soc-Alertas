@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { imagenesPegadas, peso, subirAdjuntos, TIPOS } from "../components/Adjuntos";
 import { Campo, Combo, Crit, MsgError } from "../components/Ui";
 import { useAuth } from "../auth";
-import { aInputLocal, CRITICIDADES, deInputLocal, ESTADOS, fechaHora, infoGlpi } from "../util";
+import { aInputLocal, clave, CRITICIDADES, deInputLocal, duracion, ESTADOS, fechaHora, infoGlpi } from "../util";
 
 const VACIO = {
   servicio: "SOC", cliente_id: "", caso_uso_id: null, alerta: "", criticidad: "", tecnica: "", tactica_id: "",
@@ -24,6 +24,9 @@ Se evidenció …`;
 export default function CasoForm() {
   const { id } = useParams();
   const editando = Boolean(id);
+  const [sp] = useSearchParams();
+  const alertaId = editando ? null : sp.get("alerta");
+  const [alerta, setAlerta] = useState(null);   // ticket del SIEM que se está reportando
   const nav = useNavigate();
   const [f, setF] = useState(VACIO);
   const [numero, setNumero] = useState(null);
@@ -37,7 +40,7 @@ export default function CasoForm() {
   const [glpi, setGlpi] = useState({ activo: false });
   const [crearTicket, setCrearTicket] = useState(false);
   const [original, setOriginal] = useState(null);
-  const { puede } = useAuth();
+  const { puede, usuario } = useAuth();
   const [reporteOriginal, setReporteOriginal] = useState(null);   // {texto del campo, ISO guardado}
   const [archivos, setArchivos] = useState([]);  // [{archivo, tipo}] se suben después de crear el caso
   const agregar = (lista, tipo) => {
@@ -66,10 +69,22 @@ export default function CasoForm() {
         setOriginal({ cliente_id: c.cliente_id, caso_uso_id: c.caso_uso_id, alerta: c.alerta });
         setAlertaLibre(!c.caso_uso_id);
       }).catch(setError);
+    } else if (alertaId) {
+      // Reportar una alerta de GLPI: se toma (los demás ven quién la tiene) y se llenan los datos del ticket
+      (async () => {
+        let a = await api(`/alertas/${alertaId}`);
+        if (a.estado === "POR_REPORTAR") a = { ...a, ...(await api(`/alertas/${alertaId}/tomar`, { metodo: "POST" })) };
+        if (a.estado === "REPORTADA") { nav(`/casos/${a.caso_id}`, { replace: true }); return; }
+        if (a.estado === "CERRADA_GLPI") throw new Error(`El ticket ${a.glpi_ticket_id} se cerró en GLPI: ya no está por reportar.`);
+        setAlerta(a);
+        setAlertaLibre(true);
+        setF((x) => ({ ...x, servicio: "SOC", cliente_id: a.cliente_id ?? "", alerta: a.titulo, criticidad: a.criticidad || "",
+          fecha_evento: aInputLocal(a.fecha_alerta), glpi_ticket_id: a.glpi_ticket_id }));
+      })().catch(setError);
     } else {
       setF((x) => ({ ...x, fecha_evento: aInputLocal(new Date()) }));
     }
-  }, [id, editando]);
+  }, [id, editando, alertaId]);
 
   useEffect(() => {
     api("/casos-uso/opciones", { params: { servicio: f.servicio } }).then(setOpciones).catch(setError);
@@ -103,6 +118,15 @@ export default function CasoForm() {
     }));
   };
 
+  // Si el título de la alerta es un caso de uso de la base de conocimiento, se propone con su plantilla
+  const [propuesto, setPropuesto] = useState(false);
+  useEffect(() => {
+    if (!alerta || propuesto || !opciones.length) return;
+    setPropuesto(true);
+    const o = opciones.find((x) => clave(x.nombre) === clave(alerta.titulo));
+    if (o) { setAlertaLibre(false); elegirCasoUso(o); }
+  }, [alerta, opciones, propuesto]);   // eslint-disable-line react-hooks/exhaustive-deps
+
   // Al editar se conserva el cliente o caso de uso del caso aunque ya esté deshabilitado
   const clientesServicio = clientes.filter((c) => (c.activo || c.id === original?.cliente_id) && (f.servicio === "SOC" ? c.servicio_soc : c.servicio_noc));
   const clienteSel = clientes.find((c) => String(c.id) === String(f.cliente_id));
@@ -129,7 +153,7 @@ export default function CasoForm() {
     try {
       const r = editando
         ? await api(`/casos/${id}`, { metodo: "PUT", datos })
-        : await api("/casos", { metodo: "POST", datos, params: { crear_ticket: glpi.activo && crearTicket } });
+        : await api("/casos", { metodo: "POST", datos, params: alerta ? { alerta_id: alerta.id } : { crear_ticket: glpi.activo && crearTicket } });
       // El caso ya quedó guardado: si un archivo falla, se informa en el detalle y se puede volver a subir
       const fallas = [];
       for (const x of archivos) {
@@ -147,15 +171,37 @@ export default function CasoForm() {
     <form onSubmit={guardar}>
       <div className="cabecera">
         <div>
-          <h1>{editando ? `Editar caso ${numero || ""}` : "Registrar caso"}</h1>
+          <h1>{editando ? `Editar caso ${numero || ""}` : alerta ? `Reportar alerta · ticket GLPI ${alerta.glpi_ticket_id}` : "Registrar caso"}</h1>
           <p>{editando ? "Los cambios de estado quedan en el historial del caso." : "El número de reporte se asigna automáticamente al guardar."}</p>
         </div>
         <div className="acciones">
-          <Link className="btn" to={editando ? `/casos/${id}` : "/casos"}>Cancelar</Link>
+          <Link className="btn" to={editando ? `/casos/${id}` : alerta ? "/alertas" : "/casos"}>Cancelar</Link>
           <button className="btn primario" disabled={guardando}>{guardando ? "Guardando…" : "Guardar caso"}</button>
         </div>
       </div>
       <MsgError e={error} />
+
+      {alerta && (
+        <div className="panel ficha-alerta">
+          <h2>Alerta del SIEM en GLPI</h2>
+          <p style={{ marginTop: -4 }}>
+            <b>Ticket {alerta.glpi_ticket_id}</b> · llegó a GLPI el {fechaHora(alerta.fecha_alerta)} · lleva {duracion(alerta.minutos)}
+            {" "}(SLA de {alerta.criticidad || "Media"}: {duracion(alerta.sla_minutos)}).
+            {" "}El caso queda con este ticket: no se crea otro en GLPI.
+          </p>
+          {alerta.estado === "EN_GESTION" && alerta.analista && alerta.analista.id !== usuario.id && (
+            <div className="alerta aviso">La está gestionando {alerta.analista.nombre}{puede("casos.revisar") ? "; como revisor puede reportarla." : ": solo quien la tomó o un revisor pueden reportarla."}</div>
+          )}
+          {!alerta.cliente_id && <div className="alerta aviso">La entidad de GLPI de este ticket ({alerta.glpi_entidad_id ?? "sin dato"}) no está asignada a ningún cliente: elija el cliente abajo.</div>}
+          <pre className="contenido-ticket">{alerta.contenido || "El ticket no tiene descripción."}</pre>
+          {alerta.contenido && (
+            <div className="acciones" style={{ marginTop: 8 }}>
+              <button type="button" className="btn chico" onClick={() => setF((x) => ({ ...x, log_evento: alerta.contenido }))}>Usar como log del evento</button>
+              <span className="tenue">La hora del evento se llenó con la llegada a GLPI; corríjala con la del SIEM si la trae el correo.</span>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="panel">
         <h2>1. Cliente y alerta</h2>
@@ -294,7 +340,7 @@ export default function CasoForm() {
         </div>
       )}
 
-      {!editando && glpi.activo && (
+      {!editando && !alerta && glpi.activo && (
         <div className="panel">
           <label className="check">
             <input type="checkbox" checked={crearTicket} onChange={(e) => setCrearTicket(e.target.checked)} />
@@ -310,7 +356,7 @@ export default function CasoForm() {
       )}
 
       <div className="acciones" style={{ justifyContent: "flex-end", marginTop: 16 }}>
-        <Link className="btn" to={editando ? `/casos/${id}` : "/casos"}>Cancelar</Link>
+        <Link className="btn" to={editando ? `/casos/${id}` : alerta ? "/alertas" : "/casos"}>Cancelar</Link>
         <button className="btn primario" disabled={guardando}>{guardando ? "Guardando…" : "Guardar caso"}</button>
       </div>
     </form>

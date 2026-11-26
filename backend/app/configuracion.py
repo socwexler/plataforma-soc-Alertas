@@ -66,6 +66,7 @@ GRUPOS: dict[str, dict] = {
         C("avisos_agrupar_min", "Agrupar los casos por revisar cada (minutos)", "entero", min=0, max=240),
         C("aviso_devuelto", "Avisar al analista cuando le devuelven un caso", "si_no", ayuda="Al correo del usuario; si no tiene, a los destinatarios"),
         C("aviso_glpi", "Avisar si falla GLPI", "si_no"),
+        C("aviso_alerta_sin_tomar", "Avisar si una alerta de GLPI supera su SLA sin que nadie la tome", "si_no"),
     ]},
     "glpi": {"titulo": "GLPI", "url": ("glpi_url",), "campos": [
         C("glpi_url", "URL de la API", "url", opcional=True, ayuda="termina en /apirest.php; vacío desactiva la integración"),
@@ -79,6 +80,12 @@ GRUPOS: dict[str, dict] = {
         C("glpi_resolver_al_cerrar", "Resolver el ticket al cerrar el caso", "si_no"),
         C("glpi_sync_minutos", "Sincronizar cada (minutos)", "entero", min=0, max=1440, ayuda="0 = solo manual"),
         C("glpi_url_tickets", "URL web para abrir un ticket", "url", opcional=True, ayuda="vacío = se deduce de la API"),
+        C("glpi_alertas_activo", "Traer las alertas del SIEM (Alertas por tratar)", "si_no", ayuda="Tickets que el SIEM crea en GLPI por correo; se reconocen por al menos uno de los tres criterios siguientes"),
+        C("glpi_alertas_origen_id", "Alertas: ID del origen de la solicitud", "entero", opcional=True, min=1, max=10**9, ayuda="p. ej. el de «Correo electrónico»"),
+        C("glpi_alertas_categoria_id", "Alertas: ID de la categoría ITIL", "entero", opcional=True, min=1, max=10**9),
+        C("glpi_alertas_texto", "Alertas: texto en el título", "texto", opcional=True, ayuda="p. ej. FortiSIEM"),
+        C("glpi_alertas_minutos", "Alertas: buscar cada (minutos)", "entero", min=1, max=60),
+        C("glpi_alertas_dias", "Alertas: traer tickets de los últimos (días)", "entero", min=1, max=30),
     ]},
     "fortisiem": {"titulo": "FortiSIEM", "url": ("fortisiem_url",), "campos": [
         C("fortisiem_url", "URL del supervisor", "url", opcional=True, ayuda="por ejemplo https://fortisiem.empresa.com"),
@@ -295,8 +302,11 @@ def guardar(db: Session, yo: Usuario, grupo: str, datos: dict, borrar: list[str]
         for (k1, e1), (k2, e2) in zip(SLA, SLA[1:]):
             if int(actual(f"sla_{k1}")) > int(actual(f"sla_{k2}")):
                 raise ErrorConfig(f"El SLA de {e1} no puede ser mayor que el de {e2}")
+    if grupo == "glpi" and actual("glpi_alertas_activo") in (True, "true") and not any(
+            actual(k) for k in ("glpi_alertas_origen_id", "glpi_alertas_categoria_id", "glpi_alertas_texto")):
+        raise ErrorConfig("Para traer las alertas del SIEM indique al menos un criterio: origen, categoría o texto del título")
     if grupo == "avisos":
-        clave = secretos.get("smtp_clave") or (settings.smtp_clave if "smtp_clave" not in borrar else None)
+        clave =secretos.get("smtp_clave") or (settings.smtp_clave if "smtp_clave" not in borrar else None)
         if actual("smtp_seguridad") == "NINGUNA" and (actual("smtp_usuario") or clave):
             raise ErrorConfig("Con usuario o contraseña la conexión debe ser STARTTLS o SSL")
         if actual("smtp_usuario") and not clave:
