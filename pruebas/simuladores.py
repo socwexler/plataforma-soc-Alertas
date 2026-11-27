@@ -4,6 +4,7 @@ Corre en un contenedor aparte de la red de soc-prueba. HTTP en 9000 y SMTP en 25
 """
 import base64
 import json
+import os
 import socketserver
 import threading
 from datetime import datetime, timedelta, timezone
@@ -12,7 +13,25 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 CORREOS: list[dict] = []
 PETICIONES: list[dict] = []
-ESTADO = {"smtp": True, "glpi": True}
+ESTADO = {"smtp": True, "glpi": True, "ajeno": False}
+SP = "/sp"   # carpeta de SharePoint de prueba (la misma que se monta en la plataforma)
+
+
+def _id(rel: str) -> str:
+    return base64.urlsafe_b64encode(rel.encode()).decode().rstrip("=")
+
+
+def _rel(i: str) -> str:
+    return base64.urlsafe_b64decode(i + "=" * (-len(i) % 4)).decode()
+
+
+def _item(rel: str) -> dict:
+    f = os.path.join(SP, rel)
+    st = os.stat(f)
+    mod = datetime.fromtimestamp(st.st_mtime, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    x = {"id": _id(rel), "name": os.path.basename(rel), "lastModifiedDateTime": mod, "size": st.st_size}
+    x["folder" if os.path.isdir(f) else "file"] = {"childCount": len(os.listdir(f))} if os.path.isdir(f) else {"mimeType": "text/csv"}
+    return x
 # Tickets «del SIEM» en GLPI: /_ticket/<id>/<entidad>/<urgencia>/<estado>/<minutos atrás>/<título>
 TICKETS: dict[int, dict] = {}
 CONTENIDO = ("&lt;p&gt;FortiSIEM: Fuerza bruta en VPN&lt;br&gt;IP origen: 203.0.113.7&lt;/p&gt;"
@@ -36,6 +55,10 @@ class Web(BaseHTTPRequestHandler):
     def do_POST(self):
         cuerpo = self.rfile.read(int(self.headers.get("Content-Length") or 0))
         PETICIONES.append({"ruta": self.path, "metodo": "POST", "cuerpo": cuerpo.decode("utf-8", "replace")})
+        if self.path.endswith("/oauth2/v2.0/token"):   # inicio de sesión de Microsoft (Entra ID)
+            f = parse_qs(cuerpo.decode())
+            ok = f.get("client_id") == ["cid-bueno"] and f.get("client_secret") == ["secreto-bueno"] and f.get("grant_type") == ["client_credentials"]
+            return self._r(200, b'{"access_token": "tok-sp", "expires_in": 3600}') if ok else self._r(401, b'{"error": "invalid_client"}')
         self._r(400 if not ESTADO["glpi"] else 201, b'["ERROR","falla simulada"]' if not ESTADO["glpi"] else b'{"id": 7001}')
 
     def do_GET(self):
@@ -46,6 +69,42 @@ class Web(BaseHTTPRequestHandler):
             _, _, k, v = p.split("/")
             ESTADO[k] = v == "si"
             return self._r(200)
+        u = urlsplit(p)
+        if u.path.startswith(("/v1.0/", "/_descarga/")):
+            PETICIONES.append({"ruta": p, "auth": h.get("Authorization")})
+        if u.path.startswith("/v1.0/"):   # Microsoft Graph (solo lectura)
+            if h.get("Authorization") != "Bearer tok-sp":
+                return self._r(401, b'{"error": {"code": "InvalidAuthenticationToken"}}')
+            ruta = unquote(u.path[len("/v1.0"):])
+            if ruta.startswith("/sites/") and ":" in ruta:
+                return self._r(404) if ruta.endswith("/NOEXISTE") else self._r(200, b'{"id": "sitio1"}')
+            if ruta == "/sites/sitio1/drive":
+                return self._r(200, b'{"id": "drive1"}')
+            if ruta == "/sites/sitio1/drives":
+                return self._r(200, b'{"value": [{"id": "drive1", "name": "Documentos"}, {"id": "drive2", "name": "Otra"}]}')
+            if ruta.startswith("/drives/drive1/root") and ruta.endswith("/children"):
+                rel = ruta[len("/drives/drive1/root:/"):-len(":/children")] if ruta.startswith("/drives/drive1/root:/") else ""
+                d = os.path.join(SP, rel)
+                if ".." in rel.split("/") or not os.path.isdir(d):
+                    return self._r(404, b'{"error": {"code": "itemNotFound"}}')
+                todos = sorted(os.listdir(d))
+                pag = int(parse_qs(u.query).get("pag", ["1"])[0])
+                trozo = todos[(pag - 1) * 4:pag * 4]   # páginas de 4 para probar @odata.nextLink
+                res = {"value": [_item(os.path.join(rel, n) if rel else n) for n in trozo]}
+                if pag * 4 < len(todos):
+                    host = "http://otro.example:9000" if ESTADO["ajeno"] else "http://sim:9000"
+                    res["@odata.nextLink"] = f"{host}{u.path}?pag={pag + 1}"
+                return self._r(200, json.dumps(res).encode())
+            if ruta.startswith("/drives/drive1/items/") and ruta.endswith("/content"):
+                i = ruta.split("/")[4]
+                return self._r(302, b"", extra=[("Location", f"http://sim:9000/_descarga/{i}")])
+            return self._r(404)
+        if u.path.startswith("/_descarga/"):
+            rel = _rel(u.path.split("/")[2])
+            if ".." in rel.split("/"):
+                return self._r(404)
+            with open(os.path.join(SP, rel), "rb") as f:
+                return self._r(200, f.read(), "application/octet-stream")
         if p.startswith("/_ticket/"):
             _, _, tid, ent, urg, est, atras, titulo = p.split("/", 7)
             fecha = (datetime.now(timezone(timedelta(hours=-5))) - timedelta(minutes=int(atras))).strftime("%Y-%m-%d %H:%M:%S")

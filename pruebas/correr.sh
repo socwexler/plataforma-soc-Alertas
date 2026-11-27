@@ -19,7 +19,7 @@ trap 'limpiar "${DEJAR:-}"' EXIT
 DEJAR=${1:-}
 
 mkdir "$D/plataforma-soc"; tar --exclude='./.env' --exclude='./.git' --exclude='./pruebas' --exclude='__pycache__' --exclude='node_modules' -C "$C" -cf - . | tar xf - -C "$D/plataforma-soc"
-cp "$XLSX" "$D/b.xlsx"; mkdir -p "$D/sal" "$D/plataforma-soc/datos"; [ ! -f "$R/clientes.json" ] || cp "$R/clientes.json" "$D/plataforma-soc/datos/"
+cp "$XLSX" "$D/b.xlsx"; mkdir -p "$D/sal" "$D/plataforma-soc/datos/sharepoint"; [ ! -f "$R/clientes.json" ] || cp "$R/clientes.json" "$D/plataforma-soc/datos/"
 cd "$D/plataforma-soc" || exit 1
 sed -i 's/^name: plataforma-soc/name: soc-prueba/' docker-compose.yml
 sed -i 's/plataforma-soc_pgdata/soc-prueba_pgdata/; s/\^plataforma-soc-web/^soc-prueba-web/' instalar.sh
@@ -44,7 +44,8 @@ prueba e2e_estado "$(w "$P")"
 prueba e2e_roles
 prueba e2e_correo "$(w "$D/sal")"
 # simuladores de GLPI, FortiSIEM y correo en la red de la copia; no salen a Internet
-docker run -d --rm --name soc-prueba-sim --network soc-prueba_default --network-alias sim -v "$(w "$P/simuladores.py"):/s.py:ro" soc-prueba-api python -u //s.py >/dev/null && sleep 3
+docker run -d --rm --name soc-prueba-sim --network soc-prueba_default --network-alias sim -v "$(w "$P/simuladores.py"):/s.py:ro" -v "$(w "$D/plataforma-soc/datos/sharepoint"):/sp:ro" soc-prueba-api python -u //s.py >/dev/null && sleep 3
 MSYS_NO_PATHCONV=1 prueba e2e_config
 MSYS_NO_PATHCONV=1 prueba e2e_alertas            # bandeja de alertas de GLPI: después de e2e_config
+MSYS_NO_PATHCONV=1 prueba e2e_sharepoint "$(w "$D/plataforma-soc/datos/sharepoint")" "$(w "$R")"   # anexos desde SharePoint (carpeta y Graph)
 echo; if [ "$FALLOS" = 0 ]; then echo "PRUEBAS CORRECTAS"; else echo "PRUEBAS CON FALLOS: $FALLOS"; exit 1; fi

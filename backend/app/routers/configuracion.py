@@ -239,6 +239,23 @@ def probar_fortisiem(_=Depends(ADMIN)):
     return r
 
 
+@router.get("/sharepoint/estado")
+def estado_sharepoint(_=Depends(ADMIN)):
+    """Avance de la configuración, para la guía de pasos (no se conecta a SharePoint)."""
+    from .. import sharepoint
+    return sharepoint.estado()
+
+
+@router.post("/sharepoint/probar")
+def probar_sharepoint(db: Session = Depends(get_db), _=Depends(ADMIN)):
+    """Revisa la conexión y las carpetas de los anexos (solo lectura)."""
+    from .. import sharepoint
+    try:
+        return sharepoint.probar(db.scalars(select(Cliente).where(Cliente.activo).order_by(Cliente.codigo)).all())
+    except sharepoint.ErrorSP as e:
+        raise HTTPException(400 if "no está activada" in str(e) else 502, str(e))
+
+
 @router.get("/sistema")
 def sistema(db: Session = Depends(get_db), _=Depends(ADMIN)):
     try:

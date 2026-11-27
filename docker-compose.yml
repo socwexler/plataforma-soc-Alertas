@@ -29,6 +29,8 @@ services:
     volumes:
       # Carpeta con los Excel/CSV a migrar (solo lectura)
       - ${DATOS_DIR:-./datos}:/datos:ro
+      # Carpeta de SharePoint sincronizada con OneDrive (anexos del informe, solo lectura)
+      - ${SHAREPOINT_CARPETA_LOCAL:-./datos/sharepoint}:/sharepoint:ro
     depends_on:
       db:
         condition: service_healthy

@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
-from .. import adjuntos, imagenes
+from .. import adjuntos, imagenes, sharepoint
 from ..auditoria import registrar
 from ..config import settings
 from ..db import get_db
@@ -58,6 +58,7 @@ def _detalle(db: Session, inf: Informe) -> dict:
     an = inf.anexos or {}
     return {
         **_resumen(inf),
+        "sharepoint": sharepoint.activo(),
         "eps_promedio": inf.eps_promedio, "fuentes_integradas": inf.fuentes_integradas,
         "boletines_enviados": inf.boletines_enviados, "boletines": inf.boletines or [], "actividades": inf.actividades or [],
         "textos": inf.textos or {}, "claves_textos": CLAVES, "archivos": inf.archivos or [],
@@ -226,7 +227,6 @@ async def cargar_anexos(iid: int, archivos: list[UploadFile], db: Session = Depe
     inf = _obtener(db, iid)
     _editable(inf)
     resultados, errores = [], []
-    anexos = dict(inf.anexos or {})
     for a in archivos:
         contenido = await a.read()
         if len(contenido) > MAX_ANEXO:
@@ -237,21 +237,81 @@ async def cargar_anexos(iid: int, archivos: list[UploadFile], db: Session = Depe
         except ax.ErrorAnexo as e:
             errores.append(str(e))
             continue
-        anexos, eps, boletines = ax.aplicar(anexos, leidos)
-        if eps and inf.eps_promedio is None:
-            inf.eps_promedio = eps[-1]["valor"]
-        if boletines and not inf.boletines:
-            inf.boletines = boletines
-            inf.boletines_enviados = inf.boletines_enviados or len(boletines)
-        if anexos.get("fuentes") and not inf.fuentes_integradas:
-            inf.fuentes_integradas = anexos["fuentes"]["total"]
-        detalle = [{"tipo": t["tipo"], "nombre": ax.NOMBRES.get(t["tipo"], t["tipo"]), "origen": t["origen"],
-                    "filas": t["filas"], "resumen": ax.resumen(t)} for t in leidos]
-        resultados.append({"archivo": a.filename, "tablas": detalle})
-        inf.archivos = [*(inf.archivos or []), {"archivo": a.filename, "tablas": detalle, "por": yo.nombre,
-                                                "fecha": datetime.now(TZ).isoformat(timespec="minutes")}]
+        resultados.append(_aplicar_anexo(inf, a.filename, leidos, yo))
+    db.commit()
+    return {"resultados": resultados, "errores": errores, "informe": _detalle(db, inf)}
+
+
+def _aplicar_anexo(inf: Informe, archivo: str, leidos: list[dict], yo: Usuario, **extra) -> dict:
+    """Combina lo leído con los anexos del informe y deja el archivo en el historial."""
+    anexos, eps, boletines = ax.aplicar(dict(inf.anexos or {}), leidos)
+    if eps and inf.eps_promedio is None:
+        inf.eps_promedio = eps[-1]["valor"]
+    if boletines and not inf.boletines:
+        inf.boletines = boletines
+        inf.boletines_enviados = inf.boletines_enviados or len(boletines)
+    if anexos.get("fuentes") and not inf.fuentes_integradas:
+        inf.fuentes_integradas = anexos["fuentes"]["total"]
+    detalle = [{"tipo": t["tipo"], "nombre": ax.NOMBRES.get(t["tipo"], t["tipo"]), "origen": t["origen"],
+                "filas": t["filas"], "resumen": ax.resumen(t)} for t in leidos]
+    inf.archivos = [*(inf.archivos or []), {"archivo": archivo, "tablas": detalle, "por": yo.nombre,
+                                            "fecha": datetime.now(TZ).isoformat(timespec="minutes"), **extra}]
     inf.anexos = anexos
     flag_modified(inf, "anexos")
+    return {"archivo": archivo, "tablas": detalle, **extra}
+
+
+@router.get("/{iid}/sharepoint")
+def sharepoint_buscar(iid: int, db: Session = Depends(get_db), _=Depends(requiere("informes.editar"))):
+    """Archivos del cliente en las carpetas de los anexos; propone los del periodo (CODIGO_AAAA-MM)."""
+    inf = _obtener(db, iid)
+    _editable(inf)
+    try:
+        tipos = sharepoint.buscar(inf.cliente, inf.periodo_inicio)
+    except sharepoint.ErrorSP as e:
+        raise HTTPException(400 if "no está activada" in str(e) else 502, str(e))
+    return {"modo": settings.sharepoint_modo, "cliente": inf.cliente.codigo,
+            "patron": f"{inf.cliente.codigo}_{inf.periodo_inicio.year}-{inf.periodo_inicio.month:02d}", "tipos": tipos}
+
+
+class PedidoSP(BaseModel):
+    tipo: str = Field(max_length=30)
+    nombre: str = Field(min_length=1, max_length=260)
+
+
+class TraerSP(BaseModel):
+    archivos: list[PedidoSP] = Field(min_length=1, max_length=12)
+
+
+@router.post("/{iid}/sharepoint")
+def sharepoint_traer(iid: int, datos: TraerSP, db: Session = Depends(get_db), yo: Usuario = Depends(requiere("informes.editar"))):
+    """Carga los archivos elegidos como si se hubieran subido a mano. Cada uno debe tener las columnas de su carpeta."""
+    inf = _obtener(db, iid)
+    _editable(inf)
+    try:
+        bajados = sharepoint.traer(inf.cliente, [(x.tipo, x.nombre) for x in datos.archivos])
+    except sharepoint.ErrorSP as e:
+        raise HTTPException(400 if "no está activada" in str(e) else 502, str(e))
+    resultados, errores = [], []
+    for b in bajados:
+        nombre_tipo = sharepoint.TIPOS.get(b["tipo"], (b["tipo"], set()))[0]
+        if b["error"]:
+            errores.append(f"{nombre_tipo}: {b['error']}")
+            continue
+        try:
+            leidos = ax.leer_anexo(b["archivo"], b["contenido"])
+        except ax.ErrorAnexo as e:
+            errores.append(f"{nombre_tipo}: {e}")
+            continue
+        esperados = sharepoint.TIPOS[b["tipo"]][1]
+        otros = [t for t in leidos if t["tipo"] not in esperados]
+        if otros:
+            hallado = ax.NOMBRES.get(otros[0]["tipo"], otros[0]["tipo"])
+            nota = " (la columna del país debe decir «destino» en los salientes)" if b["tipo"].startswith("paises") and otros[0]["tipo"].startswith("paises") else ""
+            errores.append(f"{nombre_tipo}: {b['archivo']} se reconoció como {hallado}, no como {nombre_tipo}{nota}; no se cargó")
+            continue
+        mod = b["modificado"].astimezone(TZ).isoformat(timespec="minutes") if b["modificado"] else None
+        resultados.append(_aplicar_anexo(inf, b["archivo"], leidos, yo, origen="SharePoint", ruta=b["ruta"], modificado=mod))
     db.commit()
     return {"resultados": resultados, "errores": errores, "informe": _detalle(db, inf)}
 

@@ -4,6 +4,7 @@ import { api, token } from "../api";
 import { useAuth } from "../auth";
 import { imagenesPegadas } from "../components/Adjuntos";
 import { ImagenPrivada, subirImagen } from "../components/Imagen";
+import TraerSharePoint from "../components/SharePoint";
 import { Campo, MsgError } from "../components/Ui";
 import { duracion, fechaHora, num } from "../util";
 
@@ -51,6 +52,7 @@ export default function InformeEditor() {
   const [error, setError] = useState(null);
   const [ocupado, setOcupado] = useState(null);
   const [carga, setCarga] = useState(null);
+  const [sp, setSp] = useState(false);       // ventana «Traer de SharePoint»
   const archivo = useRef(null);
 
   const aplicar = useCallback((d) => {
@@ -174,11 +176,13 @@ export default function InformeEditor() {
           <div className="acciones" style={{ marginBottom: 12 }}>
             <input ref={archivo} type="file" multiple accept=".csv,.txt,.xlsx,.xlsm" style={{ display: "none" }} onChange={(e) => subir(e.target.files)} />
             <button className="btn primario" disabled={!!ocupado} onClick={() => archivo.current.click()}>{ocupado === "anexos" ? "Procesando…" : "Cargar archivos"}</button>
+            {inf.sharepoint && <button className="btn" disabled={!!ocupado} onClick={() => { setError(null); setMsg(null); setCarga(null); setSp(true); }}>Traer de SharePoint</button>}
           </div>
         )}
+        {sp && <TraerSharePoint id={id} onCerrar={() => setSp(false)} onCargado={(c) => { setSp(false); aplicar(c.informe); setCarga(c); }} />}
         {carga && (
           <div className={`alerta ${carga.errores.length ? "aviso" : "ok"}`}>
-            {carga.resultados.map((r) => <div key={r.archivo}><b>{r.archivo}:</b> {r.tablas.map((t) => `${t.nombre} (${t.resumen})`).join(" · ")}</div>)}
+            {carga.resultados.map((r) => <div key={r.ruta || r.archivo}><b>{r.archivo}:</b> {r.tablas.map((t) => `${t.nombre} (${t.resumen})`).join(" · ")}{r.ruta && <span className="tenue"> · SharePoint: {r.ruta}</span>}</div>)}
             {carga.errores.map((e) => <div key={e}>⚠ {e}</div>)}
           </div>
         )}

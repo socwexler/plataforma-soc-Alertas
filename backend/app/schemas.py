@@ -55,7 +55,16 @@ class ClienteIn(BaseModel):
     eps_contratados: int | None = None
     fuentes_licencia: int | None = None
     glpi_entidad_id: int | None = None
+    sharepoint_carpeta: str | None = Field(default=None, max_length=80, pattern=r"^[^/\\:*?\"<>|\x00-\x1f]*$")
     activo: bool = True
+
+    @field_validator("sharepoint_carpeta")
+    @classmethod
+    def _carpeta(cls, v):
+        v = (v or "").strip()
+        if v in (".", ".."):
+            raise ValueError("Nombre de carpeta no válido")
+        return v or None
 
 
 class ClienteOut(ClienteIn, ORM):

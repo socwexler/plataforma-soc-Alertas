@@ -76,6 +76,24 @@ class Settings(BaseSettings):
     fortisiem_clave: str | None = None
     fortisiem_verificar_ssl: bool = True
 
+    # SharePoint: anexos del informe (solo lectura). no | carpeta (sincronizada y montada en /sharepoint) | graph
+    sharepoint_modo: str = "no"
+    sharepoint_ruta: str | None = None             # carpeta base dentro de la montada o de la biblioteca
+    sharepoint_sitio: str | None = None            # https://empresa.sharepoint.com/sites/SOC
+    sharepoint_biblioteca: str | None = None       # vacío = la biblioteca de documentos del sitio
+    sharepoint_tenant: str | None = None
+    sharepoint_cliente_id: str | None = None
+    sharepoint_secreto: str | None = None
+    sharepoint_login_url: str = "https://login.microsoftonline.com"
+    sharepoint_graph_url: str = "https://graph.microsoft.com/v1.0"
+    # Carpeta de cada anexo: su nombre o el número con que empieza («04» = «04 WX - Promedio Mensual EPS»)
+    sharepoint_carpeta_eps: str = "04"
+    sharepoint_carpeta_fuentes: str = "07"
+    sharepoint_carpeta_paises_entrantes: str = "10"
+    sharepoint_carpeta_paises_salientes: str = "12"
+    sharepoint_carpeta_puertos: str = "14"
+    sharepoint_carpeta_ips: str = "15"
+
     @property
     def sla_objetivos(self) -> dict[str, int]:
         return {"Crítica": self.sla_critica, "Alta": self.sla_alta, "Media": self.sla_media, "Baja": self.sla_baja}

@@ -6,7 +6,7 @@ import { AccionesFila, Campo, Confirmar, Modal, MsgError } from "../components/U
 import { fechaHora, num } from "../util";
 
 const NUEVO = { codigo: "", nombre: "", servicio_soc: true, servicio_noc: false, dia_corte: 1, eps_contratados: "",
-  fuentes_licencia: "", glpi_entidad_id: "", activo: true };
+  fuentes_licencia: "", glpi_entidad_id: "", sharepoint_carpeta: "", activo: true };
 
 function PanelGlpi() {
   const { puede } = useAuth();
@@ -168,7 +168,7 @@ export default function Clientes() {
                   {c.total_correos ? `${c.total_correos} destinatario${c.total_correos > 1 ? "s" : ""}` : "Configurar"}</button></td>
                 <td>{c.activo ? "Habilitado" : <span className="badge etq">Deshabilitado</span>}</td>
                 <td><AccionesFila activo={c.activo} uso={c.uso}
-                  onEditar={() => { setError(null); setEditar({ ...NUEVO, ...c, eps_contratados: c.eps_contratados ?? "", fuentes_licencia: c.fuentes_licencia ?? "", glpi_entidad_id: c.glpi_entidad_id ?? "" }); }}
+                  onEditar={() => { setError(null); setEditar({ ...NUEVO, ...c, eps_contratados: c.eps_contratados ?? "", fuentes_licencia: c.fuentes_licencia ?? "", glpi_entidad_id: c.glpi_entidad_id ?? "", sharepoint_carpeta: c.sharepoint_carpeta ?? "" }); }}
                   onEstado={() => setConfirmar({ tipo: "estado", c })} onEliminar={() => setConfirmar({ tipo: "eliminar", c })} /></td>
               </tr>
             ))}
@@ -204,6 +204,7 @@ export default function Clientes() {
             <Campo etiqueta="EPS contratados"><input type="number" value={editar.eps_contratados} onChange={set("eps_contratados")} /></Campo>
             <Campo etiqueta="Fuentes por licencia"><input type="number" value={editar.fuentes_licencia} onChange={set("fuentes_licencia")} /></Campo>
             <Campo etiqueta="ID de entidad en GLPI"><input type="number" value={editar.glpi_entidad_id} onChange={set("glpi_entidad_id")} /></Campo>
+            <Campo etiqueta="Carpeta en SharePoint" ayuda="vacío = el código"><input value={editar.sharepoint_carpeta || ""} onChange={set("sharepoint_carpeta")} maxLength={80} placeholder={editar.codigo || "código"} /></Campo>
           </div>
         </Modal>
       )}

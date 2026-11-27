@@ -276,6 +276,10 @@ def leer_anexo(nombre: str, contenido: bytes) -> list[dict]:
             if not tipo:
                 continue
             t, datos, cuenta = PROCESADORES[tipo](claves, filas)
+            if origen == "CSV":
+                origen = nombre
+            elif "noc" in nombre.lower() and "noc" not in origen.lower():
+                origen = f"{origen} ({nombre})"
             salida.append({"tipo": t, "origen": origen, "filas": cuenta, "datos": datos})
     except (csv.Error, ValueError) as e:
         raise ErrorAnexo(f"No se pudo leer {nombre}: {e}") from e
@@ -324,7 +328,7 @@ def resumen(t: dict) -> str:
         return f"{len(d['entrantes'])} puertos no comunes entrantes y {len(d['salientes'])} salientes"
     if t["tipo"] == "ips":
         return f"{len(d['bloqueados'])} ataques bloqueados y {len(d['permitidos'])} permitidos/detectados"
-    if t["tipo"] == "fuentes":
+    if t["tipo"] in ("fuentes", "fuentes_noc"):
         return f"{d['total']} fuentes, {len(d['por_tipo'])} tipos"
     if t["tipo"] == "eps":
         return ", ".join(f"{x['periodo']}: {x['valor']}" for x in d)

@@ -94,6 +94,23 @@ GRUPOS: dict[str, dict] = {
         C("fortisiem_clave", "Contraseña", "secreto"),
         C("fortisiem_verificar_ssl", "Verificar el certificado", "si_no"),
     ]},
+    "sharepoint": {"titulo": "SharePoint (anexos del informe)",
+                   "url": ("sharepoint_login_url", "sharepoint_graph_url", "sharepoint_tenant", "sharepoint_cliente_id"), "campos": [
+        C("sharepoint_modo", "Origen", "opcion", opciones=["no", "carpeta", "graph"],
+          nombres={"no": "Desactivado", "carpeta": "Carpeta sincronizada (montada en /sharepoint)", "graph": "SharePoint (Microsoft Graph)"}),
+        C("sharepoint_ruta", "Carpeta base", "texto", opcional=True, ayuda="dentro de la carpeta montada o de la biblioteca; p. ej. 01 Gestion de monitoreo SOC NOC"),
+        C("sharepoint_sitio", "Sitio de SharePoint", "url", opcional=True, ayuda="p. ej. https://empresa.sharepoint.com/sites/SOC (solo Graph)"),
+        C("sharepoint_biblioteca", "Biblioteca", "texto", opcional=True, ayuda="vacío = Documentos del sitio"),
+        C("sharepoint_tenant", "ID del inquilino (tenant)", "texto", opcional=True),
+        C("sharepoint_cliente_id", "ID de la aplicación (client ID)", "texto", opcional=True, ayuda="aplicación de Entra ID con Sites.Selected de solo lectura"),
+        C("sharepoint_secreto", "Secreto de la aplicación", "secreto"),
+        C("sharepoint_login_url", "Servicio de inicio de sesión", "url"),
+        C("sharepoint_graph_url", "Servicio de Microsoft Graph", "url"),
+        *[C(f"sharepoint_carpeta_{k}", f"Carpeta · {et}", "texto", ayuda=a) for k, et, a in (
+            ("eps", "EPS", "nombre o número con que empieza, p. ej. 04"), ("fuentes", "Fuentes integradas", "p. ej. 07"),
+            ("paises_entrantes", "Países entrantes", "p. ej. 10"), ("paises_salientes", "Países salientes", "p. ej. 12"),
+            ("puertos", "Puertos", "p. ej. 14"), ("ips", "Ataques IPS", "p. ej. 15"))],
+    ]},
 }
 _CAMPOS = {c["clave"]: (g, c) for g, d in GRUPOS.items() for c in d["campos"]}
 
@@ -225,7 +242,7 @@ def _convertir(c: dict, v, dominio: str):
         raise ErrorConfig(f"{et}: no es válido")
     if t == "url":
         v = validar_url(v)
-        if c["clave"] not in ("url_plataforma", "glpi_url_tickets"):   # las demás las llama el servidor
+        if c["clave"] not in ("url_plataforma", "glpi_url_tickets", "sharepoint_sitio"):   # las demás las llama el servidor
             validar_host(urlsplit(v).hostname)
         return v
     if t == "host":
@@ -305,8 +322,12 @@ def guardar(db: Session, yo: Usuario, grupo: str, datos: dict, borrar: list[str]
     if grupo == "glpi" and actual("glpi_alertas_activo") in (True, "true") and not any(
             actual(k) for k in ("glpi_alertas_origen_id", "glpi_alertas_categoria_id", "glpi_alertas_texto")):
         raise ErrorConfig("Para traer las alertas del SIEM indique al menos un criterio: origen, categoría o texto del título")
+    if grupo == "sharepoint" and actual("sharepoint_modo") == "graph":
+        secreto = secretos.get("sharepoint_secreto") or (settings.sharepoint_secreto if "sharepoint_secreto" not in borrar else None)
+        if not (actual("sharepoint_sitio") and actual("sharepoint_tenant") and actual("sharepoint_cliente_id") and secreto):
+            raise ErrorConfig("Para usar Microsoft Graph faltan el sitio, el tenant, el client ID o el secreto")
     if grupo == "avisos":
-        clave =secretos.get("smtp_clave") or (settings.smtp_clave if "smtp_clave" not in borrar else None)
+        clave = secretos.get("smtp_clave") or (settings.smtp_clave if "smtp_clave" not in borrar else None)
         if actual("smtp_seguridad") == "NINGUNA" and (actual("smtp_usuario") or clave):
             raise ErrorConfig("Con usuario o contraseña la conexión debe ser STARTTLS o SSL")
         if actual("smtp_usuario") and not clave:

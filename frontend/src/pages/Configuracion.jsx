@@ -3,16 +3,18 @@ import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { Campo, Confirmar, Modal, MsgError } from "../components/Ui";
+import PasosSharePoint from "../components/PasosSharePoint";
 import { copiarTexto, duracion, fecha, fechaHora, num, olvidarGlpi } from "../util";
 
 const PESTANAS = [["sistema", "Estado"], ["general", "General"], ["correo_cliente", "Correo al cliente"], ["avisos", "Avisos internos"],
-  ["glpi", "GLPI"], ["fortisiem", "FortiSIEM"], ["conexiones", "Otras APIs"], ["claves", "Claves de acceso"]];
+  ["glpi", "GLPI"], ["fortisiem", "FortiSIEM"], ["sharepoint", "SharePoint"], ["conexiones", "Otras APIs"], ["claves", "Claves de acceso"]];
 const INTRO = {
   general: "Parámetros de toda la plataforma. El SLA es el tiempo entre la alerta del SIEM y el reporte al cliente: cambia el cumplimiento en inicio, tablero, casos e informes en borrador; los finales no cambian.",
   correo_cliente: "Datos fijos del borrador de alerta. Los destinatarios de cada cliente se administran en Clientes → Correos. La plataforma no envía correos a clientes.",
   avisos: "Correos automáticos solo para el equipo de Wexler: casos por revisar, devueltos y fallas de GLPI. Llevan número, cliente, alerta y criticidad, sin el detalle del caso.",
   glpi: "Integración de tickets con GLPI 10.",
   fortisiem: "Guarda y prueba la conexión. Por ahora los anexos se siguen cargando por archivo en cada informe.",
+  sharepoint: "Anexos del informe desde las carpetas de SharePoint, solo lectura. «Carpeta sincronizada» lee la carpeta de OneDrive montada en el equipo (SHAREPOINT_CARPETA_LOCAL en el .env); «Microsoft Graph» necesita una aplicación de Entra ID con Sites.Selected de lectura sobre el sitio.",
 };
 
 function Entrada({ c, valor, onCambio, borrar, onBorrar }) {
@@ -277,10 +279,16 @@ export default function Configuracion() {
       {tab === "sistema" && <Sistema />}
       {tab === "conexiones" && <Conexiones />}
       {tab === "claves" && <Claves />}
+      {tab === "sharepoint" && grupos && <PasosSharePoint version={grupos} />}
       {g && (
         <Grupo key={g.grupo} g={g} onGuardado={setGrupos}>
           {tab === "avisos" && <Avisos />}
           {tab === "glpi" && <Probar titulo="Probar la conexión" boton="Probar GLPI" ejecutar={async () => { const r = await api("/glpi/probar", { metodo: "POST" }); return `Conexión correcta como «${r.usuario}» (entidad activa: ${r.entidad_activa}).`; }} />}
+          {tab === "sharepoint" && <Probar titulo="Probar la conexión" boton="Probar SharePoint" ejecutar={async () => {
+            const r = await api("/config/sharepoint/probar", { metodo: "POST" });
+            return <div>Conexión correcta: {r.carpetas_base} carpetas en la carpeta base.
+              {r.tipos.map((t) => <div key={t.tipo}>· <b>{t.nombre}:</b> {t.error || `${t.carpeta}${t.sin_carpeta.length ? ` · sin subcarpeta: ${t.sin_carpeta.join(", ")}` : " · todos los clientes tienen subcarpeta"}`}</div>)}</div>;
+          }} />}
           {tab === "fortisiem" && <Probar titulo="Probar la conexión" boton="Probar FortiSIEM" ejecutar={async () => { const r = await api("/config/fortisiem/probar", { metodo: "POST" }); return `FortiSIEM aceptó las credenciales (${r.ms} ms).`; }} />}
         </Grupo>
       )}

@@ -210,6 +210,24 @@ En el menú **Informes**: elija el cliente y el periodo, y pulse **Crear informe
 
 Las secciones sin datos (por ejemplo, sin anexo de IPS) se omiten del informe, y la numeración se ajusta sola.
 
+### Anexos desde SharePoint
+
+En el editor del informe, **Traer de SharePoint** busca los anexos del cliente y los carga igual que si se subieran a mano. **Solo lee**: no escribe ni borra nada en SharePoint.
+
+- **Estructura:** `<carpeta base>/<carpeta del anexo>/<carpeta del cliente>/<archivos>`. La carpeta del anexo se reconoce por su número (`04` EPS, `07` fuentes, `10` países entrantes, `12` países salientes, `14` puertos, `15` IPS) o por su nombre completo. Ambos se cambian en *Configuración → SharePoint*. La carpeta del cliente es su código, o la *Carpeta en SharePoint* de su ficha (p. ej. si en SharePoint se llama distinto).
+- **Nombre de los archivos:** `CODIGO_AAAA-MM.csv` (o `.xlsx`), con el **mes en que empieza el periodo**; para las fuentes NOC, `CODIGO_AAAA-MM_NOC.csv`. Esos se marcan solos. Si no siguen el nombre, se ven todos los archivos de la carpeta para elegir.
+- **Control:** cada archivo debe traer las columnas de su carpeta. Por ejemplo, un archivo de países entrantes en la carpeta de salientes no se carga; la columna del país de los salientes debe decir «destino». En el historial del informe queda la ruta en SharePoint y la fecha del archivo.
+- Los agregados (EPS, países, puertos, IPS) deben exportarse de FortiSIEM con el periodo de corte del cliente.
+
+Dos orígenes, en *Configuración → SharePoint*:
+
+| Origen | Cómo |
+|---|---|
+| **Carpeta sincronizada** | La carpeta de SharePoint sincronizada con OneDrive en el equipo se monta en `/sharepoint`, solo lectura. En el `.env`: `SHAREPOINT_CARPETA_LOCAL="C:\ruta\a\la\carpeta"` y `docker compose up -d`. En *Carpeta base*, la subcarpeta si hace falta. Sirve en el equipo que tiene OneDrive, no en el servidor Linux. |
+| **Microsoft Graph** | TI registra una aplicación en Entra ID con el permiso de aplicación **Sites.Selected**, da consentimiento de administrador y le concede **lectura** sobre el sitio. En la pantalla van el sitio (`https://empresa.sharepoint.com/sites/...`), el tenant, el client ID y el secreto (se guarda cifrado), la biblioteca si no es *Documentos* y la carpeta base. El servidor necesita salida a `login.microsoftonline.com`, `graph.microsoft.com` y `*.sharepoint.com`. |
+
+**Probar SharePoint** revisa la conexión, las 6 carpetas y qué clientes no tienen subcarpeta.
+
 ### Descargas y estados
 
 | Botón | Resultado |
@@ -335,6 +353,7 @@ Menú *Configuración* (Líder SOC y Administrador). Lo guardado allí reemplaza
 - **General:** duración de la sesión, límites de archivos, fondo del mapa, dirección de la plataforma.
 - **Correo al cliente:** copias fijas, dominio propio, plazo, marca TLP. La alerta sigue siendo un borrador: no se envía.
 - **Avisos internos:** correo SMTP **solo al dominio propio** para casos por revisar (agrupados), devueltos (al analista), fallas de GLPI y alertas de GLPI que superan su SLA sin que nadie las tome. Llevan número, cliente, alerta y criticidad. Si el correo falla, el caso se guarda igual y se reintenta hasta 6 veces; a las 24 horas se descarta.
+- **SharePoint:** origen de los anexos del informe (carpeta sincronizada o Microsoft Graph) y prueba. La pestaña trae una guía «Cómo activarlo» que marca los pasos ya listos, con la línea del `.env`, la solicitud para TI lista para copiar y lo que el equipo debe hacer cada mes.
 - **GLPI** y **FortiSIEM:** conexión y prueba. En GLPI también se activa la bandeja *Alertas por tratar* y sus criterios. De FortiSIEM solo se prueba; los anexos se cargan por archivo.
 - **Otras APIs:** registro y prueba de conexiones; usarlas requiere desarrollo.
 - **Claves de acceso:** para que otro sistema consulte `GET /api/externo/casos` y `/api/externo/resumen` con la cabecera `X-Api-Key`. Solo lectura, con vencimiento, por cliente si se quiere y revocables. No entregan análisis ni registros.

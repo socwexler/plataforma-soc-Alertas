@@ -341,3 +341,23 @@ tr.anulado td { color: var(--tenue); }
 .contenido-ticket { background: var(--log-bg); color: var(--log-tx); border-radius: 12px; padding: 14px; max-height: 340px; overflow: auto;
   white-space: pre-wrap; overflow-wrap: anywhere; font-family: Consolas, "Cascadia Mono", monospace; font-size: 12.5px; margin: 8px 0 0; }
 .ficha-alerta { border-left: 4px solid var(--acento); }
+
+/* Traer anexos de SharePoint */
+.sp-lista { display: grid; gap: 10px; max-height: 58vh; overflow: auto; padding-right: 4px; }
+.sp-tipo { border: 1px solid var(--borde); border-radius: 12px; padding: 10px 12px; background: var(--panel-2); }
+.sp-cab { margin-bottom: 4px; overflow-wrap: anywhere; }
+.sp-archivo { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; padding: 3px 0; overflow-wrap: anywhere; }
+@media (max-width: 640px) { .sp-archivo { grid-template-columns: auto 1fr; } .sp-archivo > :last-child { grid-column: 2; } }
+
+/* Guía de pasos (Configuración → SharePoint) */
+.pasos-sp details { border-top: 1px solid var(--borde); padding: 10px 0 4px; }
+.pasos-sp summary { cursor: pointer; padding: 4px 0; }
+.pasos { list-style: none; margin: 8px 0 6px; padding: 0; display: grid; gap: 10px; }
+.paso { display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start; overflow-wrap: anywhere; }
+.marca-paso { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 13px;
+  background: var(--gris-bg); color: var(--gris-tx); border: 1px solid var(--gris-bd); }
+.paso.hecho .marca-paso { background: var(--ok-bg); color: var(--ok-tx); border-color: var(--ok-bd); }
+.paso.falta .marca-paso { background: var(--aviso-bg); color: var(--aviso-tx); border-color: var(--aviso-bd); }
+.codigo-paso { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 6px 0; }
+.codigo-paso code, .pasos code { background: var(--panel-2); border: 1px solid var(--borde); border-radius: 6px; padding: 2px 6px; font-size: 12.5px; overflow-wrap: anywhere; }
+.carpetas-paso { margin: 4px 0 0; padding-left: 18px; }

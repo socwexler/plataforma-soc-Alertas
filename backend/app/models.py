@@ -51,6 +51,8 @@ class Cliente(Base):
     eps_contratados: Mapped[int | None] = mapped_column(Integer)
     fuentes_licencia: Mapped[int | None] = mapped_column(Integer)
     glpi_entidad_id: Mapped[int | None] = mapped_column(Integer)
+    # Subcarpeta del cliente en SharePoint (anexos del informe); vacío = el código
+    sharepoint_carpeta: Mapped[str | None] = mapped_column(String(80))
     # Destinatarios del correo de alerta. Solo se aceptan direcciones de los dominios del cliente (o propios).
     correos_para: Mapped[list] = mapped_column(JSONB, default=list, server_default="[]")
     correos_cc: Mapped[list] = mapped_column(JSONB, default=list, server_default="[]")
